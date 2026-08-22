@@ -118,6 +118,7 @@ function publishDiscovery() {
 let consecutiveMisses = 0;
 let lastPower = null;
 let fastPollUntil = 0;
+let lastLoggedLine = null;
 
 async function loop() {
   for (;;) {
@@ -136,7 +137,14 @@ async function tick() {
 
   if (power === null) {
     consecutiveMisses += 1;
-    console.log(`No reply from PS5 (miss #${consecutiveMisses})`);
+    // Only log while we're still deciding; once we've settled on offline,
+    // stay quiet until something actually changes.
+    if (consecutiveMisses <= 3) {
+      console.log(`No reply from PS5 (miss #${consecutiveMisses})`);
+    }
+    if (consecutiveMisses === 3) {
+      console.log("PS5 unreachable -- reporting offline, silencing further misses");
+    }
     if (consecutiveMisses >= 3) {
       client.publish(TOPICS.availability, "offline", { retain: true });
       client.publish(TOPICS.power, "OFF", { retain: true });
@@ -145,10 +153,14 @@ async function tick() {
       sharedState.update({ power: null, derivedState: "off", activity: "none" });
       lastPower = "STANDBY";
       fastPollUntil = 0;
+      lastLoggedLine = null;
     }
     return;
   }
 
+  if (consecutiveMisses >= 3) {
+    console.log("PS5 reachable again");
+  }
   consecutiveMisses = 0;
   client.publish(TOPICS.availability, "online", { retain: true });
   client.publish(TOPICS.power, power === "AWAKE" ? "ON" : "OFF", { retain: true });
@@ -200,7 +212,14 @@ async function tick() {
   client.publish(TOPICS.state, derivedState, { retain: true });
   client.publish(TOPICS.activity, activity, { retain: true });
   sharedState.update({ power, derivedState, activity });
-  console.log(`power=${power} state=${derivedState} activity=${activity}`);
+
+  // Only log when something actually changed -- an unchanging console
+  // shouldn't fill the log with identical lines every poll.
+  const line = `power=${power} state=${derivedState} activity=${activity}`;
+  if (line !== lastLoggedLine) {
+    console.log(line);
+    lastLoggedLine = line;
+  }
 }
 
 process.on("SIGTERM", () => {

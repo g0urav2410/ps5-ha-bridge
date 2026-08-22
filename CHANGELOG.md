@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.2
+
+- Quieter logging: state lines are only written when something actually
+  changes, and repeated "No reply from PS5" misses stop once the console
+  has been confirmed unreachable (a single line notes it went offline, and
+  another notes when it's reachable again).
+
 ## 2.1.1
 
 - Fixed the live status card (and `sensor.<name>_state`) freezing on its
