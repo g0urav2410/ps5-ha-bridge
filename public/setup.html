@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PS5 Bridge Setup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light dark;
+    --fg: #1a1a1a;
+    --bg: #ffffff;
+    --muted: #6b7280;
+    --border: rgba(128,128,128,0.25);
+    --card: rgba(128,128,128,0.06);
+    --accent: #0066cc;
+    --ok: #22c55e;
+    --bad: #ef4444;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg: #f2f2f2; --bg: #16181c; --card: rgba(255,255,255,0.05); }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 620px;
+    margin: 1.5rem auto;
+    padding: 0 1rem 3rem;
+    line-height: 1.5;
+    color: var(--fg);
+    background: var(--bg);
+  }
+  h1 { font-size: 1.35rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--muted); margin-top: 0; margin-bottom: 1.5rem; font-size: 0.92rem; }
+  .card {
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.1rem;
+  }
+  .card h2 { font-size: 1rem; margin: 0 0 0.75rem; }
+
+  /* live status grid */
+  .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  .status-cell { text-align: center; padding: 0.6rem 0.4rem; border-radius: 8px; background: var(--card); }
+  .status-cell .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .status-cell .value { font-size: 0.95rem; font-weight: 600; margin-top: 0.2rem; word-break: break-word; }
+  .pill { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+  .dot.ok { background: var(--ok); }
+  .dot.bad { background: var(--bad); }
+  .dot.idle { background: var(--muted); }
+
+  /* steps */
+  ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: step; }
+  ol.steps li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 2.2rem;
+    margin-bottom: 1rem;
+  }
+  ol.steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0; top: 0;
+    width: 1.6rem; height: 1.6rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  ol.steps li:last-child { margin-bottom: 0; }
+
+  a.button, button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 7px;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.9rem;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+  button.danger { background: transparent; color: var(--bad); border: 1px solid var(--bad); }
+  button:disabled { opacity: 0.5; cursor: default; }
+
+  .input-row { display: flex; gap: 0.5rem; margin: 0.75rem 0; }
+  input[type=text] {
+    flex: 1;
+    min-width: 0;
+    font-family: monospace;
+    font-size: 0.85rem;
+    padding: 0.55rem 0.6rem;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg);
+  }
+  #message { margin-top: 0.6rem; font-size: 0.87rem; min-height: 1.2em; }
+  #message.error { color: var(--bad); }
+  #message.success { color: var(--ok); }
+  code { background: var(--card); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
+  .hint { font-size: 0.82rem; color: var(--muted); margin-top: 0.5rem; }
+</style>
+</head>
+<body>
+  <h1>🎮 PS5 Bridge</h1>
+  <p class="subtitle" id="deviceIp">Loading...</p>
+
+  <div class="card">
+    <h2>Live status</h2>
+    <div class="status-grid">
+      <div class="status-cell">
+        <div class="label">Power</div>
+        <div class="value" id="powerValue">–</div>
+      </div>
+      <div class="status-cell">
+        <div class="label">State</div>
+        <div class="value" id="stateValue">–</div>
+      </div>
+      <div class="status-cell">
+        <div class="label">Activity</div>
+        <div class="value" id="activityValue">–</div>
+      </div>
+    </div>
+    <p class="hint">Power detection works right now with no setup. State/Activity fill in once you connect your account below.</p>
+  </div>
+
+  <div class="card">
+    <div class="pill"><span id="statusDot" class="dot idle"></span><span id="statusText">Checking...</span></div>
+  </div>
+
+  <div class="card" id="pairCard">
+    <h2>Connect your PSN account</h2>
+    <p class="hint" style="margin-top:-0.4rem;">One-time. Unlocks knowing what you're playing, not just on/off.</p>
+    <ol class="steps">
+      <li>Make sure you're logged into <strong>playstation.com</strong> in a browser on this device.</li>
+      <li><a class="button" href="https://ca.account.sony.com/api/v1/ssocookie" target="_blank" rel="noopener">Open my login code →</a></li>
+      <li>Select all the text on that page (it looks like <code>{"npsso":"..."}</code>) and copy it — the whole thing, no need to trim it.</li>
+      <li>
+        Paste it below.
+        <div class="input-row">
+          <input type="text" id="npssoInput" placeholder="Paste here — full JSON or just the code, either works">
+          <button class="secondary" id="pasteButton" title="Paste from clipboard">📋 Paste</button>
+        </div>
+        <button id="pairButton">Connect</button>
+      </li>
+    </ol>
+    <div id="message"></div>
+  </div>
+
+  <div class="card" id="pairedCard" style="display:none;">
+    <h2>✅ Connected<span id="onlineIdText"></span></h2>
+    <p class="hint">Game/activity data is flowing to Home Assistant.</p>
+    <button class="danger" id="unpairButton">Disconnect account</button>
+  </div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+
+    function extractNpsso(raw) {
+      const trimmed = raw.trim();
+      // Accept a full pasted JSON blob, or just the bare code.
+      const match = trimmed.match(/"npsso"\s*:\s*"([^"]+)"/);
+      if (match) return match[1];
+      return trimmed.replace(/[{}"]/g, "").replace(/^npsso\s*:\s*/, "").trim();
+    }
+
+    async function refreshStatus() {
+      try {
+        const res = await fetch("api/status");
+        const data = await res.json();
+
+        el("powerValue").textContent = data.power === "AWAKE" ? "On" : data.power === "STANDBY" ? "Standby" : "Unknown";
+        el("stateValue").textContent = data.derivedState || "–";
+        el("activityValue").textContent = data.activity || "–";
+        el("deviceIp").textContent = data.ps5Ip ? "Watching " + data.ps5Ip : "";
+
+        if (data.paired) {
+          el("statusDot").className = "dot ok";
+          el("statusText").textContent = "Connected to PSN";
+          el("pairCard").style.display = "none";
+          el("pairedCard").style.display = "block";
+          el("onlineIdText").textContent = data.onlineId ? " as " + data.onlineId : "";
+        } else {
+          el("statusDot").className = "dot bad";
+          el("statusText").textContent = "Not connected to PSN (power on/off still works without it)";
+          el("pairCard").style.display = "block";
+          el("pairedCard").style.display = "none";
+        }
+      } catch (e) {
+        el("statusText").textContent = "Could not reach the add-on";
+      }
+    }
+
+    el("pasteButton").addEventListener("click", async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        el("npssoInput").value = text;
+      } catch (e) {
+        el("message").className = "error";
+        el("message").textContent = "Couldn't read clipboard automatically — paste manually with Ctrl/Cmd+V.";
+      }
+    });
+
+    el("pairButton").addEventListener("click", async () => {
+      const message = el("message");
+      message.className = "";
+      message.textContent = "";
+
+      const npsso = extractNpsso(el("npssoInput").value);
+      if (!npsso) {
+        message.className = "error";
+        message.textContent = "Paste your login code first.";
+        return;
+      }
+
+      const btn = el("pairButton");
+      btn.disabled = true;
+      btn.textContent = "Connecting...";
+      try {
+        const res = await fetch("api/pair", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ npsso }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to connect");
+        message.className = "success";
+        message.textContent = "Connected as " + (data.onlineId || "your account") + "!";
+        await refreshStatus();
+      } catch (e) {
+        message.className = "error";
+        message.textContent = e.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Connect";
+      }
+    });
+
+    el("unpairButton").addEventListener("click", async () => {
+      await fetch("api/unpair", { method: "POST" });
+      await refreshStatus();
+    });
+
+    refreshStatus();
+    setInterval(refreshStatus, 5000);
+  </script>
+</body>
+</html>

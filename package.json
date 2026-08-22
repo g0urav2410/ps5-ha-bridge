@@ -1,0 +1,11 @@
+{
+  "name": "ps5-mqtt-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.21.1",
+    "mqtt": "^5.10.1",
+    "psn-api": "^2.13.0"
+  }
+}

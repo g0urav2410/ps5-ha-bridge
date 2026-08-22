@@ -1,0 +1,9 @@
+node_modules/
+npm-debug.log
+*.log
+
+# runtime data the add-on writes at /data on HA -- never relevant to the repo,
+# but kept here in case anyone runs it locally outside HAOS
+data/
+psn-tokens.json
+options.json
