@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.3
+
+- Fixed automations never firing when the PS5 is fully powered off. The
+  bridge was publishing availability `offline` for an unreachable console,
+  which made Home Assistant mark the entities `unavailable` -- overriding
+  the state, so a trigger like `to: "off"` never matched. Availability now
+  only reflects whether the bridge itself is running (via MQTT last-will);
+  an unreachable PS5 is simply reported as `off`.
+
 ## 2.1.2
 
 - Quieter logging: state lines are only written when something actually

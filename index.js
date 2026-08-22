@@ -143,10 +143,14 @@ async function tick() {
       console.log(`No reply from PS5 (miss #${consecutiveMisses})`);
     }
     if (consecutiveMisses === 3) {
-      console.log("PS5 unreachable -- reporting offline, silencing further misses");
+      console.log("PS5 unreachable -- treating as off, silencing further misses");
     }
     if (consecutiveMisses >= 3) {
-      client.publish(TOPICS.availability, "offline", { retain: true });
+      // NOTE: deliberately do NOT publish availability "offline" here.
+      // Availability means "is this bridge working" -- an unreachable PS5
+      // is a normal off state, and marking the entities unavailable would
+      // hide the state from automations entirely (they'd see "unavailable"
+      // instead of "off" and never fire).
       client.publish(TOPICS.power, "OFF", { retain: true });
       client.publish(TOPICS.state, "off", { retain: true });
       client.publish(TOPICS.activity, "none", { retain: true });
