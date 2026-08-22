@@ -139,7 +139,12 @@ async function tick() {
     console.log(`No reply from PS5 (miss #${consecutiveMisses})`);
     if (consecutiveMisses >= 3) {
       client.publish(TOPICS.availability, "offline", { retain: true });
-      sharedState.update({ power: null });
+      client.publish(TOPICS.power, "OFF", { retain: true });
+      client.publish(TOPICS.state, "off", { retain: true });
+      client.publish(TOPICS.activity, "none", { retain: true });
+      sharedState.update({ power: null, derivedState: "off", activity: "none" });
+      lastPower = "STANDBY";
+      fastPollUntil = 0;
     }
     return;
   }
