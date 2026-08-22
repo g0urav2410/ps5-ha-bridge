@@ -1,5 +1,5 @@
 name: "PS5 to MQTT Bridge"
-version: "2.0.0"
+version: "2.0.1"
 slug: "ps5_mqtt_bridge"
 description: "Polls a PS5's power state over the LAN, plus PSN presence (current game / home screen), and publishes it all to MQTT for Home Assistant automations."
 arch:
@@ -9,7 +9,6 @@ arch:
   - armhf
   - i386
 init: false
-host_network: true
 startup: services
 boot: auto
 ingress: true
