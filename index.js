@@ -5,6 +5,7 @@ const { pollPower } = require("./lib/ps5");
 const { PsnClient } = require("./lib/psn");
 const { startServer } = require("./lib/server");
 const sharedState = require("./lib/state");
+const { log, logError, logState, resetStateLog } = require("./lib/logger");
 
 const options = JSON.parse(fs.readFileSync("/data/options.json", "utf8"));
 
@@ -14,6 +15,9 @@ const MQTT_PORT = options.mqtt_port || 1883;
 const MQTT_USER = options.mqtt_user || undefined;
 const MQTT_PASSWORD = options.mqtt_password || undefined;
 const POLL_INTERVAL_MS = (options.poll_interval || 10) * 1000;
+// PSN presence is a cloud API call, so it gets its own slower interval --
+// the LAN ping is local and free, but hammering Sony risks rate-limiting.
+const PRESENCE_INTERVAL_MS = (options.presence_interval || 15) * 1000;
 const FAST_POLL_MS = 3000; // used briefly right after waking, to catch the boot->home transition
 const FAST_POLL_WINDOW_MS = 30000;
 const DEVICE_NAME = options.device_name || "PlayStation 5";
@@ -48,10 +52,10 @@ const client = mqtt.connect(`mqtt://${MQTT_HOST}:${MQTT_PORT}`, {
   will: { topic: TOPICS.availability, payload: "offline", retain: true },
 });
 
-client.on("error", (err) => console.error("MQTT error:", err.message));
+client.on("error", (err) => logError(`MQTT error: ${err.message}`));
 
 client.on("connect", () => {
-  console.log("Connected to MQTT broker");
+  log("Connected to MQTT broker");
   publishDiscovery();
   client.publish(TOPICS.availability, "online", { retain: true });
   loop();
@@ -118,14 +122,17 @@ function publishDiscovery() {
 let consecutiveMisses = 0;
 let lastPower = null;
 let fastPollUntil = 0;
-let lastLoggedLine = null;
+// Cached PSN presence, so the LAN ping can run fast without dragging the
+// cloud call along with it at the same rate.
+let lastPresence = null;
+let lastPresenceAt = 0;
 
 async function loop() {
   for (;;) {
     try {
       await tick();
     } catch (err) {
-      console.error("Poll failed:", err.message);
+      logError(`Poll failed: ${err.message}`);
     }
     const interval = Date.now() < fastPollUntil ? FAST_POLL_MS : POLL_INTERVAL_MS;
     await new Promise((r) => setTimeout(r, interval));
@@ -140,10 +147,10 @@ async function tick() {
     // Only log while we're still deciding; once we've settled on offline,
     // stay quiet until something actually changes.
     if (consecutiveMisses <= 3) {
-      console.log(`No reply from PS5 (miss #${consecutiveMisses})`);
+      log(`No reply from PS5 (miss #${consecutiveMisses})`);
     }
     if (consecutiveMisses === 3) {
-      console.log("PS5 unreachable -- treating as off, silencing further misses");
+      log("PS5 unreachable -- treating as off, silencing further misses");
     }
     if (consecutiveMisses >= 3) {
       // NOTE: deliberately do NOT publish availability "offline" here.
@@ -157,13 +164,14 @@ async function tick() {
       sharedState.update({ power: null, derivedState: "off", activity: "none" });
       lastPower = "STANDBY";
       fastPollUntil = 0;
-      lastLoggedLine = null;
+      lastPresence = null;
+      resetStateLog();
     }
     return;
   }
 
   if (consecutiveMisses >= 3) {
-    console.log("PS5 reachable again");
+    log("PS5 reachable again");
   }
   consecutiveMisses = 0;
   client.publish(TOPICS.availability, "online", { retain: true });
@@ -177,6 +185,7 @@ async function tick() {
   }
   if (power === "STANDBY") {
     fastPollUntil = 0;
+    lastPresence = null;
   }
   lastPower = power;
 
@@ -185,7 +194,17 @@ async function tick() {
 
   if (power === "AWAKE" && psn.isPaired) {
     try {
-      const presence = await psn.getPresence();
+      // Refetch presence only when it's due -- except during the post-wake
+      // fast window, where catching the booting -> home moment matters more
+      // than sparing a few API calls.
+      const presenceDue = Date.now() - lastPresenceAt >= PRESENCE_INTERVAL_MS;
+      const inFastWindow = Date.now() < fastPollUntil;
+      let presence = lastPresence;
+      if (presence === null || presenceDue || inFastWindow) {
+        presence = await psn.getPresence();
+        lastPresence = presence;
+        lastPresenceAt = Date.now();
+      }
       client.publish(TOPICS.psnAuth, "OFF", { retain: true });
 
       const onlineStatus = presence?.basicPresence?.primaryPlatformInfo?.onlineStatus;
@@ -203,10 +222,10 @@ async function tick() {
       }
     } catch (err) {
       if (err.message === "REAUTH_REQUIRED") {
-        console.error("PSN refresh token expired or was revoked -- re-pair via the add-on's setup panel.");
+        logError("PSN refresh token expired or was revoked -- re-pair via the add-on's setup panel.");
         client.publish(TOPICS.psnAuth, "ON", { retain: true });
       } else {
-        console.error("Presence poll failed:", err.message);
+        logError(`Presence poll failed: ${err.message}`);
       }
     }
   } else if (power === "AWAKE") {
@@ -217,13 +236,9 @@ async function tick() {
   client.publish(TOPICS.activity, activity, { retain: true });
   sharedState.update({ power, derivedState, activity });
 
-  // Only log when something actually changed -- an unchanging console
-  // shouldn't fill the log with identical lines every poll.
-  const line = `power=${power} state=${derivedState} activity=${activity}`;
-  if (line !== lastLoggedLine) {
-    console.log(line);
-    lastLoggedLine = line;
-  }
+  // logState() suppresses repeats, so a console sitting in one state
+  // logs once instead of every poll.
+  logState(`power=${power} state=${derivedState} activity=${activity}`);
 }
 
 process.on("SIGTERM", () => {

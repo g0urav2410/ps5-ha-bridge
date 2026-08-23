@@ -1,0 +1,143 @@
+# =============================================================================
+# PS5 Lighting
+# =============================================================================
+# Drives a WLED strip from the PS5's state, and puts the lights back the way
+# they were when you're done.
+#
+# ENTITIES THIS EXPECTS (change these if yours are named differently --
+# check Developer Tools > States to confirm):
+#   sensor.playstation_5_state  - from the PS5 bridge add-on
+#   light.wled                  - the strip
+#   number.wled_speed           - WLED effect speed (0-255), a separate entity
+#
+# THE FOUR STATES the sensor can report:
+#   off      - standby / rest mode / powered down
+#   booting  - powered on but not finished starting up (usually 5-15s)
+#   home     - awake and idle: home screen, YouTube, Netflix, any non-game app
+#   playing  - an actual game is running
+#
+# NOTE: 'booting' has no block below, so the lights simply don't react during
+# startup. Add a block for it the same way if you want a boot effect.
+# =============================================================================
+
+alias: PS5 Lighting
+description: "WLED reacts to PS5 state; restores previous lighting when done."
+
+# 'queued' so rapid state changes (off -> booting -> home) each run in order
+# instead of cancelling each other. max: 10 is just a generous queue depth.
+mode: queued
+max: 10
+
+triggers:
+  # Fires on ANY change to the sensor -- the choose blocks below sort out
+  # which state we actually landed in.
+  - trigger: state
+    entity_id: sensor.playstation_5_state
+
+conditions:
+  # Ignore junk transitions:
+  #  - 'unknown'/'unavailable' happen on HA restart or if the add-on stops
+  #  - same-to-same fires on attribute-only updates, which we don't care about
+  - condition: template
+    value_template: >
+      {{ trigger.to_state.state not in ['unknown', 'unavailable']
+         and trigger.from_state.state != trigger.to_state.state }}
+
+actions:
+  # ---------------------------------------------------------------------------
+  # STEP 1: Snapshot the lights at the START of a session.
+  # ---------------------------------------------------------------------------
+  # Leaving 'off' is the moment a gaming session begins, and it happens exactly
+  # once per session -- so this is where we capture whatever the strip was doing
+  # (color, effect, brightness, or being off entirely) to restore later.
+  #
+  # This MUST run before the lighting below overwrites it, which is why the
+  # whole thing is one automation instead of several -- separate automations
+  # firing on the same state change have no guaranteed order.
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.from_state.state == 'off' }}"
+        sequence:
+          - action: scene.create
+            data:
+              scene_id: ps5_light_snapshot
+              snapshot_entities:
+                - light.wled
+
+  # ---------------------------------------------------------------------------
+  # STEP 2: Apply the lighting for whichever state we just entered.
+  # ---------------------------------------------------------------------------
+  - choose:
+
+      # ---- HOME SCREEN: warm, gentle candle flicker -------------------------
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state.state == 'home' }}"
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.wled
+            data:
+              # Any name from the strip's effect list works here.
+              effect: Candle Multi
+              # ALWAYS set rgb_color explicitly in every state. WLED effects
+              # reuse whatever color was set last, so leaving this out means
+              # the candle flicker would inherit the red from 'playing'.
+              rgb_color: [255, 193, 141]   # #ffc18d, warm amber
+              brightness: 180              # 0-255, NOT percent (255 = 100%)
+              transition: 3                # fade-in over 3s
+          - action: number.set_value
+            target:
+              entity_id: number.wled_speed
+            data:
+              # 0-255. Lower = slower. Easiest way to tune: open WLED's own web
+              # UI, run the effect, drag its speed slider until it looks right,
+              # then copy that number here.
+              value: 96
+
+      # ---- IN A GAME: static red, dimmer so it doesn't distract -------------
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state.state == 'playing' }}"
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.wled
+            data:
+              effect: Solid                # no animation
+              rgb_color: [255, 0, 0]
+              brightness: 120              # deliberately lower than 'home'
+              transition: 2
+          # No speed set here on purpose -- 'Solid' doesn't animate. If you
+          # ever swap this for a moving effect, add a number.set_value block
+          # like the one above, or it'll keep the last speed that was set.
+
+      # ---- PS5 OFF: put the lights back how they were -----------------------
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state.state == 'off' }}"
+        sequence:
+          - choose:
+              # Restore the snapshot taken in STEP 1, if it still exists.
+              - conditions:
+                  - condition: template
+                    value_template: >
+                      {{ states('scene.ps5_light_snapshot')
+                         not in ['unknown', 'unavailable'] }}
+                sequence:
+                  - action: scene.turn_on
+                    target:
+                      entity_id: scene.ps5_light_snapshot
+                    data:
+                      transition: 2
+
+            # Fallback: no snapshot to restore, so just turn the strip off.
+            # This happens if Home Assistant restarted mid-session -- scenes
+            # made by scene.create don't survive a restart.
+            default:
+              - action: light.turn_off
+                target:
+                  entity_id: light.wled
+                data:
+                  transition: 2

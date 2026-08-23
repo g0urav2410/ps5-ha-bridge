@@ -21,14 +21,17 @@ Assistant from what's happening on the console.
 | `mqtt_host` | Your MQTT broker's address. Use `core-mosquitto` if you're running the Mosquitto add-on. |
 | `mqtt_port` | Usually `1883`. |
 | `mqtt_user` / `mqtt_password` | Credentials for that broker. |
-| `poll_interval` | Seconds between LAN power polls (3–300). `10` is a good default. |
+| `poll_interval` | Seconds between LAN power pings (2–300). Default `5`. This is a local UDP packet, so it's cheap — lower it for snappier on/off reactions. |
+| `presence_interval` | Seconds between PSN presence checks (5–600). Default `15`. This one is a cloud API call, so keep it well above `poll_interval` to avoid rate-limiting. |
 | `device_name` | Display name for the device in Home Assistant. |
 
 ## First run
 
 1. Set `ps5_ip` and your MQTT details above, then **Start** the add-on.
-2. Check the **Log** tab — you should see `Connected to MQTT broker` and
-   `power=... state=... activity=...` lines updating every poll.
+2. Check the **Log** tab — you should see `Connected to MQTT broker` and a
+   timestamped `power=... state=... activity=...` line. That line is only
+   written when something changes, so a steady console logs once, not
+   every poll.
 3. Power detection works immediately with no further setup — check
    Settings → Devices & Services → MQTT in Home Assistant for the new device.
 

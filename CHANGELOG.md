@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.2.0
+
+- Split polling into two intervals. The LAN power ping (`poll_interval`,
+  now defaulting to 5s instead of 10s) is a local UDP packet and can run
+  fast; PSN presence (`presence_interval`, default 15s) is a cloud call and
+  is now throttled separately so faster power detection doesn't mean
+  hammering Sony's API. Presence is still fetched immediately during the
+  post-wake window so the booting -> home transition isn't missed.
+- All log lines are now timestamped, and repeated state lines are
+  suppressed -- a console sitting in one state logs once, not every poll.
+
 ## 2.1.3
 
 - Fixed automations never firing when the PS5 is fully powered off. The

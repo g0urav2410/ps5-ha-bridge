@@ -33,16 +33,15 @@ Combining both gives a state machine richer than plain on/off:
 
 ## Install on HAOS
 
-1. Copy this whole `ps5-ha-bridge` folder onto your HA box's
-   `/addons/ps5-ha-bridge` (via Samba share, SSH, or the Studio Code Server
-   add-on's file browser).
-2. Settings → Add-ons → Add-on Store → ⋮ → **Check for updates**. A "Local
-   add-ons" section appears with **PS5 to MQTT Bridge**.
+1. Settings → Add-ons → Add-on Store → ⋮ → **Repositories**, and add:
+   `https://github.com/g0urav2410/ps5-ha-bridge`
+2. **PS5 to MQTT Bridge** now appears in the store.
 3. Install it, open its **Configuration** tab, set:
    - `ps5_ip`: your PS5's LAN IP (give it a DHCP reservation on your router)
    - `mqtt_host` / `mqtt_port` / `mqtt_user` / `mqtt_password` (Mosquitto
      add-on: host is `core-mosquitto`)
-   - `poll_interval`: seconds between polls (default 10)
+   - `poll_interval`: seconds between LAN power pings (default 5)
+   - `presence_interval`: seconds between PSN presence checks (default 15)
 4. Start the add-on.
 5. Open the add-on — it has its own panel (via Ingress) with a **PS5
    Bridge** icon in the HA sidebar. Power on/off already works at this
@@ -81,9 +80,11 @@ redo the same copy-paste.
   same ones community projects like `playactor` and `psn-api` use) — Sony
   could change either at any time. Both are read-only here; nothing is sent
   to your account beyond a login/presence check, same as the official PS app.
-- Power detection is AWAKE vs STANDBY, not true cold-off — a PS5 that's
-  unplugged won't reply and `availability` goes `offline` after 3 missed
-  polls.
+- Power detection is AWAKE vs STANDBY, not true cold-off. A PS5 that's
+  unplugged simply stops replying, and after 3 missed polls the bridge
+  reports it as `off`. (`availability` deliberately stays `online` in that
+  case — it tracks whether the *bridge* is alive, not the console. Marking
+  the entities unavailable would hide the state from automations.)
 - There's no way to read the PS5's actual light-bar color/pattern — it
   isn't broadcast anywhere. The `state` sensor above is what you use to
   drive *your own* light colors/patterns per state in an HA automation.
