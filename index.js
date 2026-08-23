@@ -19,6 +19,9 @@ const POLL_INTERVAL_MS = (options.poll_interval || 10) * 1000;
 // the LAN ping is local and free, but hammering Sony risks rate-limiting.
 const PRESENCE_INTERVAL_MS = (options.presence_interval || 15) * 1000;
 const FAST_POLL_MS = 3000; // used briefly right after waking, to catch the boot->home transition
+// A missed reply just needs a dropped-packet re-check, which is instant --
+// no reason to wait a full poll_interval between confirmation attempts.
+const MISS_RETRY_MS = 1000;
 const FAST_POLL_WINDOW_MS = 30000;
 const DEVICE_NAME = options.device_name || "PlayStation 5";
 
@@ -119,6 +122,7 @@ function publishDiscovery() {
   }
 }
 
+const MISSES_BEFORE_OFF = 3;
 let consecutiveMisses = 0;
 let lastPower = null;
 let fastPollUntil = 0;
@@ -134,7 +138,13 @@ async function loop() {
     } catch (err) {
       logError(`Poll failed: ${err.message}`);
     }
-    const interval = Date.now() < fastPollUntil ? FAST_POLL_MS : POLL_INTERVAL_MS;
+    let interval = POLL_INTERVAL_MS;
+    if (consecutiveMisses > 0 && consecutiveMisses < MISSES_BEFORE_OFF) {
+      // mid-confirmation: re-check quickly rather than dawdling
+      interval = MISS_RETRY_MS;
+    } else if (Date.now() < fastPollUntil) {
+      interval = FAST_POLL_MS;
+    }
     await new Promise((r) => setTimeout(r, interval));
   }
 }
@@ -146,13 +156,13 @@ async function tick() {
     consecutiveMisses += 1;
     // Only log while we're still deciding; once we've settled on offline,
     // stay quiet until something actually changes.
-    if (consecutiveMisses <= 3) {
+    if (consecutiveMisses <= MISSES_BEFORE_OFF) {
       log(`No reply from PS5 (miss #${consecutiveMisses})`);
     }
-    if (consecutiveMisses === 3) {
+    if (consecutiveMisses === MISSES_BEFORE_OFF) {
       log("PS5 unreachable -- treating as off, silencing further misses");
     }
-    if (consecutiveMisses >= 3) {
+    if (consecutiveMisses >= MISSES_BEFORE_OFF) {
       // NOTE: deliberately do NOT publish availability "offline" here.
       // Availability means "is this bridge working" -- an unreachable PS5
       // is a normal off state, and marking the entities unavailable would
@@ -170,7 +180,7 @@ async function tick() {
     return;
   }
 
-  if (consecutiveMisses >= 3) {
+  if (consecutiveMisses >= MISSES_BEFORE_OFF) {
     log("PS5 reachable again");
   }
   consecutiveMisses = 0;

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.1
+
+- Faster power-off detection. The 3 confirmation polls that rule out a
+  dropped packet were waiting a full `poll_interval` between each, so a
+  powered-down console took up to 3x that to register. Those re-checks now
+  happen 1s apart -- worst case drops from ~15s to ~7s at the default
+  `poll_interval` of 5s (about 4s if you lower it to 2s). Rest mode was
+  never affected: the console still answers the ping, so it's caught in a
+  single poll.
+
 ## 2.2.0
 
 - Split polling into two intervals. The LAN power ping (`poll_interval`,

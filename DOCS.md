@@ -21,8 +21,8 @@ Assistant from what's happening on the console.
 | `mqtt_host` | Your MQTT broker's address. Use `core-mosquitto` if you're running the Mosquitto add-on. |
 | `mqtt_port` | Usually `1883`. |
 | `mqtt_user` / `mqtt_password` | Credentials for that broker. |
-| `poll_interval` | Seconds between LAN power pings (2–300). Default `5`. This is a local UDP packet, so it's cheap — lower it for snappier on/off reactions. |
-| `presence_interval` | Seconds between PSN presence checks (5–600). Default `15`. This one is a cloud API call, so keep it well above `poll_interval` to avoid rate-limiting. |
+| `poll_interval` | Seconds between LAN power pings (2–300). Default `5`. This is a local UDP packet, so it's cheap — lower it for snappier on/off reactions. Governs `off` ↔ `booting`, i.e. powering on and off. |
+| `presence_interval` | Seconds between PSN presence checks (5–600). Default `15`. This one is a cloud API call, so keep it well above `poll_interval` to avoid rate-limiting. Governs `home` ↔ `playing`, i.e. starting and closing a game. Sony's own presence lag is a few seconds, so going below ~5 buys little. |
 | `device_name` | Display name for the device in Home Assistant. |
 
 ## First run
