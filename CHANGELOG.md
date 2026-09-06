@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.8.0
+
+- The effect simulation now runs **around each card's border**, the way a
+  bias light strip wraps a TV, rather than only as a bar underneath. The
+  strip is drawn to a canvas behind the card and blurred, so what shows is
+  the spill on the surrounding surface. The crisp bar stays as well, since
+  the blurred version is good for mood but poor for judging an effect.
+- Fixed the glow being invisible: it sat at a negative z-index with no
+  isolating ancestor, so it painted behind the panel's own background
+  instead of between the panel and the card.
+- Fixed the colour-explanation notes losing their styling.
+
 ## 2.7.0
 
 - Each state card now previews the effect on a **simulated LED strip**, not

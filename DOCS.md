@@ -110,10 +110,10 @@ configure each state:
 | Effect speed | Only applied when a matching `number.<light>_speed` entity exists, which is how WLED exposes it. |
 | Fade | Transition time in seconds. |
 
-Each state's card previews itself on a simulated LED strip, animated at the
-speed, brightness and colour configured, with the card's surrounding glow
-taken from the strip's average -- so the settings can be judged without
-running them. The simulations are approximations: WLED has around 180
+Each state's card previews itself: the simulated strip runs around the card's
+border the way a bias light wraps a TV, blurred so what you see is the spill,
+with a crisp bar underneath for judging the effect itself. Both animate at
+the speed, brightness and colour configured. The simulations are approximations: WLED has around 180
 effects, so names are matched loosely to about a dozen behaviours, and
 anything unrecognised is shown as generic motion rather than guessed at.
 

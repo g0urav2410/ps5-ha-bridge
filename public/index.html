@@ -145,42 +145,29 @@
   .chip.sel { background: rgba(168,85,247,0.17); border-color: var(--accent); color: var(--fg); box-shadow: var(--glow-soft); }
 
   /* per-state cards */
-  /* Each card previews itself the way the lights actually sit in the room:
-     a bias light behind a TV, throwing colour onto the wall around it. The
-     card is the screen; the bloom is the spill. */
+  /* Each card is treated as the screen, with the LED strip running around
+     its edge the way a bias light wraps a TV. The simulation is drawn to a
+     canvas sitting behind the card and blurred, so what you see is the spill
+     on the wall rather than the LEDs themselves. */
   .state {
     background: var(--panel);
     border: 1px solid var(--border-soft);
     border-radius: 11px;
-    margin-bottom: 17px;
+    margin-bottom: 26px;
     position: relative;
     transition: border-color 0.3s;
   }
-  /* The spill. Sits behind the card (negative z-index, and .state creates no
-     stacking context) and is heavily blurred, so colour escapes past the
-     edges onto the panel behind rather than tinting the card itself. */
-  .state::after {
-    content: "";
+  .state-glow {
     position: absolute;
-    inset: 14px 26px;
-    border-radius: inherit;
-    background: var(--state-color, transparent);
-    filter: blur(15px);
-    opacity: 0;
+    inset: -22px;
     z-index: -1;
     pointer-events: none;
-    transition: opacity 0.35s, background 0.35s;
+    filter: blur(17px);
+    opacity: 0;
+    transition: opacity 0.35s;
   }
-  .state.lit::after { opacity: 0.95; }
-  .state.lit { border-color: color-mix(in srgb, var(--state-color) 35%, var(--border-soft)); }
-  /* An animated effect makes the spill breathe; a Solid one holds steady.
-     Speed sets the pace, so that slider has a visible consequence here. */
-  .state.animated.lit::after { animation: ambi var(--sheen-duration, 3s) ease-in-out infinite; }
-  @keyframes ambi {
-    0%, 100% { opacity: 0.72; transform: scale(0.99); }
-    50%      { opacity: 1;    transform: scale(1.02); }
-  }
-  @media (prefers-reduced-motion: reduce) { .state.animated.lit::after { animation: none; } }
+  .state.lit .state-glow { opacity: 1; }
+  .state.lit { border-color: color-mix(in srgb, var(--state-color) 40%, var(--border-soft)); }
   .swatch-inline {
     width: 13px; height: 13px; border-radius: 3px; display: inline-block;
     vertical-align: -2px; border: 1px solid var(--border-soft); margin: 0 3px;
@@ -189,10 +176,18 @@
     font-size: 0.75rem; color: var(--muted);
     margin: -4px 0 0 87px; line-height: 1.45;
   }
+  .colour-note code {
+    font-size: 0.72rem; padding: 0.05rem 0.3rem;
+  }
+  .preview-dot {
+    width: 15px; height: 15px; border-radius: 50%; flex: none;
+    background: var(--state-color, var(--muted));
+    box-shadow: 0 0 10px var(--state-color, transparent);
+  }
   .strip-wrap { position: relative; padding: 0 13px 12px; }
   canvas.strip {
-    display: block; width: 100%; height: 34px;
-    border-radius: 7px; border: 1px solid var(--border-soft);
+    display: block; width: 100%; height: 22px;
+    border-radius: 5px; border: 1px solid var(--border-soft);
   }
   .strip-caption {
     font-size: 0.68rem; color: var(--muted); margin: 5px 0 0;
@@ -343,7 +338,7 @@
         <span>Restore previous lighting when the PS5 turns off</span>
       </div>
 
-      <div id="stateBlocks" style="padding:4px 2px;"></div>
+      <div id="stateBlocks" style="padding:4px 2px; isolation: isolate;"></div>
 
       <div class="btn-row">
         <button id="saveLighting">Save</button>
@@ -571,6 +566,7 @@
           '<span class="val">' + (c.speed == null ? 128 : c.speed) + "</span></div>";
 
     return '<div class="state" data-card="' + key + '">' +
+      (isOff ? "" : '<canvas class="state-glow" data-glow="' + key + '"></canvas>') +
       '<div class="state-head">' +
         '<span class="' + (key === "off" ? "dot" : "preview-dot") + '" style="background:' + dotColor + '"></span>' +
         "<h3>" + esc(label) + "</h3>" +
@@ -987,47 +983,99 @@
   };
 
   const LEDS = 46;
-  const stripRandom = Array.from({ length: LEDS }, () => Math.random());
+  const PERIMETER_LEDS = 76;
+  const GLOW_PAD = 22; // must match .state-glow inset
+  const stripRandom = Array.from({ length: Math.max(LEDS, PERIMETER_LEDS) }, () => Math.random());
+
+  // Walk a rounded rectangle's edge, returning where LED `i` of `n` sits.
+  // The strip starts bottom-centre and runs clockwise, which is roughly how
+  // one gets taped around a TV.
+  function perimeterPoint(i, n, w, h, pad) {
+    const x0 = pad, y0 = pad, x1 = w - pad, y1 = h - pad;
+    const bw = x1 - x0, bh = y1 - y0;
+    const total = 2 * (bw + bh);
+    let d = ((i / n) * total + bw / 2) % total;
+
+    if (d < bw) return [x0 + d, y1];            // bottom, left to right
+    d -= bw;
+    if (d < bh) return [x1, y1 - d];            // right, bottom to top
+    d -= bh;
+    if (d < bw) return [x1 - d, y0];            // top, right to left
+    d -= bw;
+    return [x0, y0 + d];                        // left, top to bottom
+  }
+
+  function renderEffect(cfg, now, count) {
+    const base = hexToRgbArr(cfg.useGameColor ? (currentGameColor || cfg.color) : cfg.color);
+    const { fn } = simFor(cfg.effect);
+    const speed = cfg.speed == null ? 128 : cfg.speed;
+    const t = (now / 1000) * (0.25 + (speed / 255) * 2.2);
+    const dim = (cfg.brightness == null ? 255 : cfg.brightness) / 255;
+    const f = dim * (cfg.enabled ? 1 : 0.12);
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      const [r, g, b] = fn(t, i, count, base, stripRandom);
+      out.push([r * f, g * f, b * f]);
+    }
+    return out;
+  }
 
   function drawStrips(now) {
     if (lighting) {
       for (const [key] of STATES) {
         if (key === "off") continue;
-        const canvas = document.querySelector('canvas[data-strip="' + key + '"]');
-        if (!canvas || !canvas.isConnected) continue;
-
-        const cfg = lighting.states[key];
-        const w = canvas.clientWidth, h = canvas.clientHeight;
-        if (!w || !h) continue;
-        if (canvas.width !== w) { canvas.width = w; canvas.height = h; }
-        const ctx = canvas.getContext("2d");
-
-        const base = hexToRgbArr(
-          cfg.useGameColor ? (currentGameColor || cfg.color) : cfg.color);
-        const { fn } = simFor(cfg.effect);
-        // WLED speed is 0-255; keep the preview watchable at both extremes.
-        const speed = cfg.speed == null ? 128 : cfg.speed;
-        const t = (now / 1000) * (0.25 + (speed / 255) * 2.2);
-        const dim = (cfg.brightness == null ? 255 : cfg.brightness) / 255;
-        const lit = cfg.enabled;
-
-        ctx.clearRect(0, 0, w, h);
-        const cell = w / LEDS;
-        let sr = 0, sg = 0, sb = 0;
-        for (let i = 0; i < LEDS; i++) {
-          let [r, g, b] = fn(t, i, LEDS, base, stripRandom);
-          const f = dim * (lit ? 1 : 0.12);
-          r *= f; g *= f; b *= f;
-          sr += r; sg += g; sb += b;
-          ctx.fillStyle = "rgb(" + (r | 0) + "," + (g | 0) + "," + (b | 0) + ")";
-          ctx.fillRect(i * cell, 0, cell + 1, h);
-        }
-        // The card's ambient spill takes the strip's average, so the bloom is
-        // actually derived from what the strip is doing.
         const card = document.querySelector('[data-card="' + key + '"]');
-        if (card && lit) {
-          card.style.setProperty("--state-color",
-            "rgb(" + ((sr / LEDS) | 0) + "," + ((sg / LEDS) | 0) + "," + ((sb / LEDS) | 0) + ")");
+        if (!card || !card.isConnected) continue;
+        const cfg = lighting.states[key];
+
+        // --- the strip wrapped around the card, blurred into a spill ---
+        const glow = card.querySelector('canvas[data-glow="' + key + '"]');
+        if (glow) {
+          const gw = card.offsetWidth + GLOW_PAD * 2;
+          const gh = card.offsetHeight + GLOW_PAD * 2;
+          if (gw > 0 && gh > 0) {
+            if (glow.width !== gw || glow.height !== gh) { glow.width = gw; glow.height = gh; }
+            const gctx = glow.getContext("2d");
+            gctx.clearRect(0, 0, gw, gh);
+            const leds = renderEffect(cfg, now, PERIMETER_LEDS);
+            const dotR = Math.max(9, Math.min(gw, gh) * 0.06);
+            for (let i = 0; i < PERIMETER_LEDS; i++) {
+              const [x, y] = perimeterPoint(i, PERIMETER_LEDS, gw, gh, GLOW_PAD + 4);
+              const [r, g, b] = leds[i];
+              if (r + g + b < 8) continue;
+              const grad = gctx.createRadialGradient(x, y, 0, x, y, dotR);
+              grad.addColorStop(0, "rgba(" + (r|0) + "," + (g|0) + "," + (b|0) + ",0.95)");
+              grad.addColorStop(1, "rgba(" + (r|0) + "," + (g|0) + "," + (b|0) + ",0)");
+              gctx.fillStyle = grad;
+              gctx.beginPath();
+              gctx.arc(x, y, dotR, 0, 6.284);
+              gctx.fill();
+            }
+          }
+        }
+
+        // --- the crisp readout, for judging the effect itself ---
+        const canvas = card.querySelector('canvas[data-strip="' + key + '"]');
+        if (canvas) {
+          const w = canvas.clientWidth, h = canvas.clientHeight;
+          if (w && h) {
+            if (canvas.width !== w) { canvas.width = w; canvas.height = h; }
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, w, h);
+            const leds = renderEffect(cfg, now, LEDS);
+            const cell = w / LEDS;
+            let sr = 0, sg = 0, sb = 0;
+            for (let i = 0; i < LEDS; i++) {
+              const [r, g, b] = leds[i];
+              sr += r; sg += g; sb += b;
+              ctx.fillStyle = "rgb(" + (r|0) + "," + (g|0) + "," + (b|0) + ")";
+              ctx.fillRect(i * cell, 0, cell + 1, h);
+            }
+            if (cfg.enabled) {
+              card.style.setProperty("--state-color",
+                "rgb(" + ((sr/LEDS)|0) + "," + ((sg/LEDS)|0) + "," + ((sb/LEDS)|0) + ")");
+            }
+          }
         }
       }
     }
