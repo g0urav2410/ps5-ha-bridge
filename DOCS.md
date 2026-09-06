@@ -115,8 +115,11 @@ colours can be compared at a glance. Effects are not simulated -- WLED has
 around 180 of them and any approximation would mislead -- so use "Try it
 now" to see one on the real lights.
 
-The effect field is a typeahead: start typing to filter. An effect the
-selected light doesn't have is flagged. The simulations are approximations: WLED has around 180
+Click the effect field to list everything the selected light supports, or
+type to filter. An effect the light doesn't have is flagged.
+
+While a preview is running, that state's "Try it now" becomes "Stop &
+restore". The simulations are approximations: WLED has around 180
 effects, so names are matched loosely to about a dozen behaviours, and
 anything unrecognised is shown as generic motion rather than guessed at.
 

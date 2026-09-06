@@ -181,6 +181,23 @@
   .colour-note code {
     font-size: 0.72rem; padding: 0.05rem 0.3rem;
   }
+  /* A <datalist> only surfaces matches once you start typing, which is no
+     help when you don't know the ~180 effect names. This is a real listbox:
+     focus shows everything, typing filters. */
+  .fx-wrap { position: relative; flex: 1.4; min-width: 0; display: flex; }
+  .fx-wrap input { flex: 1; min-width: 0; }
+  .fx-list {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    max-height: 210px; overflow-y: auto; z-index: 30;
+    background: var(--panel); border: 1px solid var(--chip-border);
+    border-radius: 8px; box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+    display: none; padding: 4px;
+  }
+  .fx-list.open { display: block; }
+  .fx-opt { padding: 6px 9px; border-radius: 5px; font-size: 0.83rem; cursor: pointer; }
+  .fx-opt:hover, .fx-opt.active { background: rgba(168,85,247,0.22); color: var(--fg); }
+  .fx-opt.none { color: var(--muted); font-style: italic; }
+  .fx-empty { padding: 7px 9px; font-size: 0.8rem; color: var(--muted); }
   .preview-dot {
     width: 15px; height: 15px; border-radius: 50%; flex: none;
     background: var(--state-color, var(--muted));
@@ -349,7 +366,6 @@
 
       <div class="btn-row">
         <button id="saveLighting">Save</button>
-        <button class="secondary" id="stopPreview" style="display:none;">Stop preview &amp; restore</button>
         <span class="note" id="saveNote"></span>
       </div>
     </div>
@@ -540,12 +556,35 @@
     return first ? first.effects : [];
   }
 
-  // A plain <select> is unusable with WLED's ~180 effects, so the field is a
-  // typeahead: type to filter, or leave it blank for no effect.
-  function effectDatalist() {
-    return currentEffects()
-      .map((e) => '<option value="' + esc(e) + '"></option>')
-      .join("");
+  // Renders the dropdown for one state, filtered by whatever's typed.
+  function renderFxList(key) {
+    const list = document.querySelector('[data-fxlist="' + key + '"]');
+    const input = document.querySelector('input[data-state="' + key + '"][data-field="effect"]');
+    if (!list || !input) return;
+    const q = (input.value || "").trim().toLowerCase();
+    const all = currentEffects();
+    const matches = q ? all.filter((e) => e.toLowerCase().includes(q)) : all;
+
+    if (!all.length) {
+      list.innerHTML = '<p class="fx-empty">This light has no effects.</p>';
+      return;
+    }
+    list.innerHTML =
+      '<div class="fx-opt none" data-fx="">No effect</div>' +
+      (matches.length
+        ? matches.map((e) => '<div class="fx-opt" data-fx="' + esc(e) + '">' + esc(e) + "</div>").join("")
+        : '<p class="fx-empty">Nothing matches.</p>');
+  }
+
+  function openFx(key) {
+    closeAllFx();
+    renderFxList(key);
+    const list = document.querySelector('[data-fxlist="' + key + '"]');
+    if (list) list.classList.add("open");
+  }
+
+  function closeAllFx() {
+    for (const l of document.querySelectorAll(".fx-list.open")) l.classList.remove("open");
   }
 
   function stateBlock(key, label, dotColor) {
@@ -560,9 +599,11 @@
           (c.turnOff !== false ? " checked" : "") + '><span class="track"></span></label>' +
           "<span>Turn lights off when there's no snapshot to restore</span></div>"
       : '<div class="ctrl"><span class="k">Effect</span>' +
-          '<input type="text" list="fx-' + key + '" data-state="' + key + '" data-field="effect" ' +
-            'placeholder="Type to search, or leave blank" value="' + esc(c.effect || "") + '">' +
-          '<datalist id="fx-' + key + '">' + effectDatalist() + "</datalist></div>" +
+          '<span class="fx-wrap">' +
+            '<input type="text" autocomplete="off" data-state="' + key + '" data-field="effect" ' +
+              'placeholder="Click to browse, or type" value="' + esc(c.effect || "") + '">' +
+            '<div class="fx-list" data-fxlist="' + key + '"></div>' +
+          "</span></div>" +
         '<div class="ctrl"><span class="k">' + (c.useGameColor ? "Fallback" : "Colour") + "</span>" +
           '<input type="color" data-state="' + key + '" data-field="color" value="' + esc(c.color || "#ffffff") + '">' +
           '<span class="switch" style="margin-left:2px;"><label class="toggle sm"><input type="checkbox" data-state="' + key +
@@ -748,9 +789,8 @@
   // whole card on every input would destroy the element being interacted
   // with. Only the effect dropdowns are rebuilt.
   function refreshEffectOptions() {
-    const html = effectDatalist();
-    for (const list of document.querySelectorAll("datalist[id^='fx-']")) {
-      list.innerHTML = html;
+    for (const [key] of STATES) {
+      if (key !== "off") renderFxList(key);
     }
     // An effect the newly-chosen light can't do would silently do nothing,
     // so flag it rather than leaving it looking valid.
@@ -788,6 +828,31 @@
     el("selCount").textContent = lighting.lights.length
       ? lighting.lights.length + " selected"
       : availableLights.length + " available";
+  });
+
+  document.addEventListener("focusin", (ev) => {
+    const t = ev.target;
+    if (t.dataset && t.dataset.field === "effect") openFx(t.dataset.state);
+    else if (!t.closest || !t.closest(".fx-list")) closeAllFx();
+  });
+
+  document.addEventListener("click", (ev) => {
+    const opt = ev.target.closest(".fx-opt");
+    if (opt) {
+      const key = opt.closest(".fx-list").dataset.fxlist;
+      const input = document.querySelector('input[data-state="' + key + '"][data-field="effect"]');
+      input.value = opt.dataset.fx;
+      lighting.states[key].effect = opt.dataset.fx || null;
+      validateEffect(key);
+      paintState(key);
+      closeAllFx();
+      return;
+    }
+    if (!ev.target.closest(".fx-wrap")) closeAllFx();
+  });
+
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") closeAllFx();
   });
 
   el("lightSearch").addEventListener("input", () => {
@@ -844,7 +909,10 @@
       }
     }
 
-    if (t.dataset.field === "effect") validateEffect(t.dataset.state);
+    if (t.dataset.field === "effect") {
+      validateEffect(t.dataset.state);
+      openFx(t.dataset.state); // re-filter as they type
+    }
 
     // keep the card's preview honest as settings change
     const c = lighting.states[t.dataset.state];
@@ -863,43 +931,61 @@
     }
   });
 
+  let previewingState = null;
+
+  function setPreviewButtons() {
+    for (const b of document.querySelectorAll("[data-preview]")) {
+      const active = b.dataset.preview === previewingState;
+      b.textContent = active ? "Stop & restore" : "Try it now";
+      b.classList.toggle("danger", active);
+      b.classList.toggle("secondary", !active);
+    }
+  }
+
   document.addEventListener("click", async (ev) => {
     const btn = ev.target.closest("[data-preview]");
     if (!btn || !lighting) return;
     const note = el("saveNote");
+    const key = btn.dataset.preview;
+
+    // Same button stops the preview it started -- putting that control at the
+    // bottom of the card meant it was never seen.
+    if (previewingState === key) {
+      note.className = "note"; note.textContent = "Restoring…";
+      try {
+        const res = await fetch("api/lighting/preview/stop", { method: "POST" });
+        const data = await res.json();
+        previewingState = null;
+        setPreviewButtons();
+        note.className = "note ok";
+        note.textContent = data.restored ? "Lights restored." : "Nothing to restore.";
+      } catch (e) {
+        note.className = "note err"; note.textContent = e.message;
+      }
+      return;
+    }
+
     readForm();
     note.className = "note"; note.textContent = "Applying…";
     try {
       await saveLighting();
       const res = await fetch("api/lighting/preview", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ state: btn.dataset.preview }),
+        body: JSON.stringify({ state: key }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
+      previewingState = key;
+      setPreviewButtons();
       note.className = "note ok";
-      note.textContent = "Applied — lights restore when you stop, or after 45s.";
-      el("stopPreview").style.display = "inline-block";
+      note.textContent = "Applied — press Stop & restore, or wait 45s.";
+      // The server reverts on its own after 45s; match that here so the
+      // button doesn't keep claiming a preview that already ended.
+      setTimeout(() => {
+        if (previewingState === key) { previewingState = null; setPreviewButtons(); }
+      }, 45000);
     } catch (e) {
       note.className = "note err"; note.textContent = e.message;
-    }
-  });
-
-  el("stopPreview").addEventListener("click", async () => {
-    const note = el("saveNote");
-    const btn = el("stopPreview");
-    btn.disabled = true;
-    note.className = "note"; note.textContent = "Restoring…";
-    try {
-      const res = await fetch("api/lighting/preview/stop", { method: "POST" });
-      const data = await res.json();
-      note.className = "note ok";
-      note.textContent = data.restored ? "Lights restored." : "Nothing to restore.";
-      btn.style.display = "none";
-    } catch (e) {
-      note.className = "note err"; note.textContent = e.message;
-    } finally {
-      btn.disabled = false;
     }
   });
 

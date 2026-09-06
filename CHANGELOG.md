@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.10.1
+
+- The effect field now has a real dropdown. It was a `<datalist>`, which only
+  surfaces matches once you start typing -- no use when you don't already
+  know the effect names. Clicking the field now lists everything the light
+  supports, and typing filters it.
+- "Try it now" becomes "Stop & restore" while a preview is running, instead
+  of putting that control at the bottom of the card where it went unnoticed.
+
 ## 2.10.0
 
 - **Removed the effect simulation.** It was approximating about a dozen
