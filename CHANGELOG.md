@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.8.1
+
+- Tightened and brightened the border glow, which was spreading too far and
+  fading out into a dim haze. Less blur, a shorter reach, and the LEDs are
+  now composited additively so overlapping ones sum the way real light does
+  instead of each washing out the last.
+
 ## 2.8.0
 
 - The effect simulation now runs **around each card's border**, the way a

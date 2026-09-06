@@ -153,16 +153,16 @@
     background: var(--panel);
     border: 1px solid var(--border-soft);
     border-radius: 11px;
-    margin-bottom: 26px;
+    margin-bottom: 20px;
     position: relative;
     transition: border-color 0.3s;
   }
   .state-glow {
     position: absolute;
-    inset: -22px;
+    inset: -13px;
     z-index: -1;
     pointer-events: none;
-    filter: blur(17px);
+    filter: blur(9px);
     opacity: 0;
     transition: opacity 0.35s;
   }
@@ -984,7 +984,7 @@
 
   const LEDS = 46;
   const PERIMETER_LEDS = 76;
-  const GLOW_PAD = 22; // must match .state-glow inset
+  const GLOW_PAD = 13; // must match .state-glow inset
   const stripRandom = Array.from({ length: Math.max(LEDS, PERIMETER_LEDS) }, () => Math.random());
 
   // Walk a rounded rectangle's edge, returning where LED `i` of `n` sits.
@@ -1038,19 +1038,25 @@
             const gctx = glow.getContext("2d");
             gctx.clearRect(0, 0, gw, gh);
             const leds = renderEffect(cfg, now, PERIMETER_LEDS);
-            const dotR = Math.max(9, Math.min(gw, gh) * 0.06);
+            const dotR = Math.max(7, Math.min(gw, gh) * 0.035);
+            // Additive, so overlapping LEDs sum the way real light does
+            // rather than each one washing out the last.
+            gctx.globalCompositeOperation = "lighter";
             for (let i = 0; i < PERIMETER_LEDS; i++) {
-              const [x, y] = perimeterPoint(i, PERIMETER_LEDS, gw, gh, GLOW_PAD + 4);
+              const [x, y] = perimeterPoint(i, PERIMETER_LEDS, gw, gh, GLOW_PAD + 3);
               const [r, g, b] = leds[i];
               if (r + g + b < 8) continue;
+              const col = (r|0) + "," + (g|0) + "," + (b|0);
               const grad = gctx.createRadialGradient(x, y, 0, x, y, dotR);
-              grad.addColorStop(0, "rgba(" + (r|0) + "," + (g|0) + "," + (b|0) + ",0.95)");
-              grad.addColorStop(1, "rgba(" + (r|0) + "," + (g|0) + "," + (b|0) + ",0)");
+              grad.addColorStop(0, "rgba(" + col + ",1)");
+              grad.addColorStop(0.45, "rgba(" + col + ",0.75)");
+              grad.addColorStop(1, "rgba(" + col + ",0)");
               gctx.fillStyle = grad;
               gctx.beginPath();
               gctx.arc(x, y, dotR, 0, 6.284);
               gctx.fill();
             }
+            gctx.globalCompositeOperation = "source-over";
           }
         }
 
