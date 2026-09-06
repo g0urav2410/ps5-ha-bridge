@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.7.0
+
+- Each state card now previews the effect on a **simulated LED strip**, not
+  just a colour swatch. Scanner sweeps, Candle flickers, Twinkle sparkles,
+  Rainbow cycles -- animated at the speed and brightness you've set, in the
+  colour that will actually be used.
+
+  These are approximations, and labelled as such: WLED ships around 180
+  effects and they're its own code, so names are matched loosely to about a
+  dozen behaviours. An unrecognised effect is shown as generic motion rather
+  than pretending to know it. It's enough to tell a scanner from a twinkle
+  before committing, which a colour swatch could never do.
+
+- The card's ambient spill is now taken from the strip's own average colour,
+  so it behaves like a bias light behind a screen: brighter, tighter, and
+  actually derived from what the strip is doing.
+
+- The colour swatch stays editable when **use game colour** is on -- it's the
+  fallback in that case, and is relabelled accordingly. Previously it was
+  disabled, which left no way to choose what happens when a game has no
+  usable cover art. Each card now spells out which colour is in play and why.
+
 ## 2.6.0
 
 - The light picker is now searchable and grouped by room, since pulling in

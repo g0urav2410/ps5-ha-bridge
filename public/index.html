@@ -145,31 +145,64 @@
   .chip.sel { background: rgba(168,85,247,0.17); border-color: var(--accent); color: var(--fg); box-shadow: var(--glow-soft); }
 
   /* per-state cards */
-  /* Each card carries the colour it will actually produce, so the settings
-     can be judged at a glance instead of by running them. */
+  /* Each card previews itself the way the lights actually sit in the room:
+     a bias light behind a TV, throwing colour onto the wall around it. The
+     card is the screen; the bloom is the spill. */
   .state {
-    background: var(--inset);
+    background: var(--panel);
     border: 1px solid var(--border-soft);
-    border-left: 3px solid var(--state-color, var(--border-soft));
-    border-radius: 11px; margin-bottom: 9px;
-    position: relative; overflow: hidden;
-    transition: box-shadow 0.25s, border-color 0.25s;
+    border-radius: 11px;
+    margin-bottom: 17px;
+    position: relative;
+    transition: border-color 0.3s;
   }
-  .state.lit { box-shadow: inset 0 0 34px -14px var(--state-color), 0 0 0 1px var(--state-color); }
-  /* A moving effect gets a drifting sheen; a static one stays still. Speed
-     drives the duration, so the slider has a visible consequence here. */
-  .state.animated::before {
-    content: ""; position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(115deg, transparent 35%, var(--state-color) 50%, transparent 65%);
-    opacity: 0.16;
-    animation: sheen var(--sheen-duration, 3s) linear infinite;
+  /* The spill. Sits behind the card (negative z-index, and .state creates no
+     stacking context) and is heavily blurred, so colour escapes past the
+     edges onto the panel behind rather than tinting the card itself. */
+  .state::after {
+    content: "";
+    position: absolute;
+    inset: 14px 26px;
+    border-radius: inherit;
+    background: var(--state-color, transparent);
+    filter: blur(15px);
+    opacity: 0;
+    z-index: -1;
+    pointer-events: none;
+    transition: opacity 0.35s, background 0.35s;
   }
-  @keyframes sheen { from { transform: translateX(-60%); } to { transform: translateX(60%); } }
-  @media (prefers-reduced-motion: reduce) { .state.animated::before { animation: none; } }
+  .state.lit::after { opacity: 0.95; }
+  .state.lit { border-color: color-mix(in srgb, var(--state-color) 35%, var(--border-soft)); }
+  /* An animated effect makes the spill breathe; a Solid one holds steady.
+     Speed sets the pace, so that slider has a visible consequence here. */
+  .state.animated.lit::after { animation: ambi var(--sheen-duration, 3s) ease-in-out infinite; }
+  @keyframes ambi {
+    0%, 100% { opacity: 0.72; transform: scale(0.99); }
+    50%      { opacity: 1;    transform: scale(1.02); }
+  }
+  @media (prefers-reduced-motion: reduce) { .state.animated.lit::after { animation: none; } }
+  .swatch-inline {
+    width: 13px; height: 13px; border-radius: 3px; display: inline-block;
+    vertical-align: -2px; border: 1px solid var(--border-soft); margin: 0 3px;
+  }
+  .colour-note {
+    font-size: 0.75rem; color: var(--muted);
+    margin: -4px 0 0 87px; line-height: 1.45;
+  }
+  .strip-wrap { position: relative; padding: 0 13px 12px; }
+  canvas.strip {
+    display: block; width: 100%; height: 34px;
+    border-radius: 7px; border: 1px solid var(--border-soft);
+  }
+  .strip-caption {
+    font-size: 0.68rem; color: var(--muted); margin: 5px 0 0;
+    display: flex; justify-content: space-between; gap: 8px;
+  }
+  .strip-caption .approx { opacity: 0.75; }
   .preview-dot {
     width: 15px; height: 15px; border-radius: 50%; flex: none;
     background: var(--state-color, var(--muted));
-    box-shadow: 0 0 9px var(--state-color, transparent);
+    box-shadow: 0 0 10px var(--state-color, transparent);
   }
   .state-head { display: flex; align-items: center; gap: 10px; padding: 12px 13px; }
   .state-head h3 { margin: 0; font-size: 0.9rem; flex: 1; }
@@ -310,7 +343,7 @@
         <span>Restore previous lighting when the PS5 turns off</span>
       </div>
 
-      <div id="stateBlocks"></div>
+      <div id="stateBlocks" style="padding:4px 2px;"></div>
 
       <div class="btn-row">
         <button id="saveLighting">Save</button>
@@ -524,12 +557,12 @@
           "<span>Turn lights off when there's no snapshot to restore</span></div>"
       : '<div class="ctrl"><span class="k">Effect</span>' +
           '<select data-state="' + key + '" data-field="effect">' + effectOptions(c.effect) + "</select></div>" +
-        '<div class="ctrl"><span class="k">Colour</span>' +
-          '<input type="color" data-state="' + key + '" data-field="color" value="' + esc(c.color || "#ffffff") + '"' +
-          (c.useGameColor ? " disabled" : "") + ">" +
+        '<div class="ctrl"><span class="k">' + (c.useGameColor ? "Fallback" : "Colour") + "</span>" +
+          '<input type="color" data-state="' + key + '" data-field="color" value="' + esc(c.color || "#ffffff") + '">' +
           '<span class="switch" style="margin-left:2px;"><label class="toggle sm"><input type="checkbox" data-state="' + key +
           '" data-field="useGameColor"' + (c.useGameColor ? " checked" : "") + '><span class="track"></span></label>' +
           "<span>use game colour</span></span></div>" +
+        '<p class="colour-note" data-note="' + key + '"></p>' +
         '<div class="ctrl"><span class="k">Brightness</span>' +
           '<input type="range" min="1" max="255" value="' + c.brightness + '" data-state="' + key + '" data-field="brightness">' +
           '<span class="val">' + Math.round((c.brightness / 255) * 100) + "%</span></div>" +
@@ -551,7 +584,12 @@
           '<input type="range" min="0" max="10" value="' + (c.transition == null ? 2 : c.transition) + '" data-state="' + key + '" data-field="transition">' +
           '<span class="val">' + (c.transition == null ? 2 : c.transition) + "s</span></div>" +
         '<div><button class="secondary tiny" data-preview="' + key + '">Try it now</button></div>' +
-      "</div></div>";
+      "</div>" +
+      (isOff ? "" :
+        '<div class="strip-wrap"><canvas class="strip" data-strip="' + key + '"></canvas>' +
+        '<p class="strip-caption"><span data-stripname="' + key + '"></span>' +
+        '<span class="approx">approximation</span></p></div>') +
+      "</div>";
   }
 
   // A big Home Assistant can have dozens of lights, so the picker is
@@ -618,9 +656,29 @@
       return;
     }
 
-    const color = c.useGameColor ? (currentGameColor || "#7c3aed") : (c.color || "#ffffff");
-    card.style.setProperty("--state-color", color);
+    const fallback = c.color || "#ffffff";
+    // What the lights would actually be set to right now.
+    const color = c.useGameColor ? (currentGameColor || fallback) : fallback;
+    // While lit, the animation loop overrides this with the strip's average.
+    if (!c.enabled) card.style.setProperty("--state-color", color);
     card.classList.toggle("lit", !!c.enabled);
+
+    const note = card.querySelector('[data-note="' + key + '"]');
+    if (note) {
+      const chip = (hex) => '<span class="swatch-inline" style="background:' + hex + '"></span>';
+      if (!c.useGameColor) {
+        note.innerHTML = "Always " + chip(fallback) + "<code>" + fallback + "</code>.";
+      } else if (currentGameColor) {
+        note.innerHTML =
+          "Now using " + chip(currentGameColor) + "<code>" + currentGameColor +
+          "</code> from the cover art. Falls back to " + chip(fallback) + "<code>" + fallback +
+          "</code> when a game has no usable artwork.";
+      } else {
+        note.innerHTML =
+          "No game colour right now, so " + chip(fallback) + "<code>" + fallback +
+          "</code> would be used. Set that swatch to choose the fallback.";
+      }
+    }
 
     // 'Solid' (and no effect at all) don't move, so they shouldn't shimmer.
     const moving = !!c.effect && c.effect !== "Solid" && !!c.enabled;
@@ -633,6 +691,14 @@
 
     const dot = card.querySelector(".preview-dot");
     if (dot) dot.style.background = color;
+
+    const nameEl = card.querySelector('[data-stripname="' + key + '"]');
+    if (nameEl) {
+      const sim = simFor(c.effect);
+      nameEl.textContent = c.effect
+        ? c.effect + (sim.key === "generic" ? " — shown as generic motion" : "")
+        : "No effect — steady colour";
+    }
   }
 
   function applyEnabledLook() {
@@ -739,8 +805,25 @@
       if (body) body.classList.toggle("disabled", !t.checked);
     }
     if (t.dataset.field === "useGameColor") {
-      const picker = document.querySelector('input[type=color][data-state="' + t.dataset.state + '"]');
-      if (picker) picker.disabled = t.checked;
+      // The swatch stays editable either way -- with the toggle on it's the
+      // fallback rather than the colour, so just relabel it.
+      const label = t.closest(".state-body").querySelector(".ctrl .k + input[type=color]");
+      if (label && label.previousElementSibling) {
+        label.previousElementSibling.textContent = t.checked ? "Fallback" : "Colour";
+      }
+      const card = document.querySelector('[data-card="' + t.dataset.state + '"]');
+      const tagHost = card && card.querySelector(".state-head");
+      if (tagHost) {
+        const existing = tagHost.querySelector(".tag");
+        if (t.checked && !existing) {
+          const tag = document.createElement("span");
+          tag.className = "tag";
+          tag.textContent = "game colour";
+          tagHost.insertBefore(tag, tagHost.querySelector(".toggle"));
+        } else if (!t.checked && existing) {
+          existing.remove();
+        }
+      }
     }
 
     // keep the card's preview honest as settings change
@@ -792,6 +875,165 @@
       note.className = "note err"; note.textContent = e.message;
     }
   });
+
+
+  // ---- LED strip preview -------------------------------------------------
+  // WLED's effects are its own code, so these are recognisable approximations
+  // rather than reproductions -- enough to tell a scanner from a twinkle
+  // before committing to it, which the colour swatch alone couldn't do.
+  const EFFECT_SIMS = {
+    solid:   (t, i, n, c) => c,
+    breathe: (t, i, n, c) => scale(c, 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * 2))),
+    fade:    (t, i, n, c) => scale(c, 0.15 + 0.85 * (0.5 + 0.5 * Math.sin(t * 1.4))),
+    scanner: (t, i, n, c) => {
+      const pos = (n - 1) * (0.5 + 0.5 * Math.sin(t * 1.6));
+      const d = Math.abs(i - pos);
+      return scale(c, Math.max(0, 1 - d / (n * 0.13)));
+    },
+    chase: (t, i, n, c) => {
+      const phase = (i / n * 6 - t * 1.4) % 1;
+      return scale(c, phase < 0.32 ? 1 : 0.06);
+    },
+    wipe: (t, i, n, c) => {
+      const head = ((t * 0.55) % 1) * n;
+      return scale(c, i < head ? 1 : 0.06);
+    },
+    rainbow: (t, i, n) => hsl(((i / n) + t * 0.14) % 1, 0.85, 0.55),
+    colorloop: (t, i, n) => hsl(((i / n) * 0.35 + t * 0.09) % 1, 0.8, 0.55),
+    candle: (t, i, n, c, rnd) => scale(c, 0.45 + 0.55 * noise(t * 2.2 + rnd[i] * 9)),
+    twinkle: (t, i, n, c, rnd) => {
+      const ph = (t * 0.85 + rnd[i] * 6.28) % 6.28;
+      const v = Math.max(0, Math.sin(ph));
+      return scale(c, 0.05 + Math.pow(v, 7) * 0.95);
+    },
+    fireworks: (t, i, n, c, rnd) => {
+      const burst = Math.floor(t * 0.8);
+      const centre = rnd[(burst * 7) % rnd.length] * n;
+      const age = (t * 0.8) % 1;
+      const d = Math.abs(i - centre);
+      const reach = age * n * 0.3;
+      const v = d < reach ? Math.max(0, 1 - age) * Math.max(0, 1 - d / (reach + 1)) : 0;
+      return scale(c, 0.04 + v);
+    },
+    aurora: (t, i, n, c) => {
+      const w = 0.5 + 0.5 * Math.sin(i / n * 3.1 + t * 0.7)
+                    * Math.sin(i / n * 1.7 - t * 0.45);
+      const [h, sa] = rgbToHslArr(c);
+      return hsl((h + w * 0.09) % 1, sa, 0.28 + w * 0.34);
+    },
+    noise: (t, i, n, c) => {
+      const w = noise(i * 0.25 + t * 1.1);
+      const [h, sa] = rgbToHslArr(c);
+      return hsl((h + w * 0.06) % 1, sa, 0.2 + w * 0.45);
+    },
+  };
+
+  // Names are matched loosely, since WLED ships ~180 of them and many are
+  // variations on the same handful of behaviours.
+  const EFFECT_MATCHERS = [
+    [/^solid$/i, "solid"],
+    [/breath|pulse|heartbeat/i, "breathe"],
+    [/scan|larson|sinelon|ripple|bounc|ping/i, "scanner"],
+    [/chase|running|theater|march/i, "chase"],
+    [/wipe|loading|percent/i, "wipe"],
+    [/rainbow|spectrum/i, "rainbow"],
+    [/colorloop|colorwave|palette|blend|flow/i, "colorloop"],
+    [/candle|fire|flicker|lava|ember/i, "candle"],
+    [/twinkle|sparkle|glitter|star|dissolve|popcorn/i, "twinkle"],
+    [/firework|starburst|drip|rain|meteor|comet/i, "fireworks"],
+    [/aurora|pacifica|lake|plasma|swirl|soap|cloud|water/i, "aurora"],
+    [/noise|perlin|phased|sine|juggle|bpm/i, "noise"],
+  ];
+
+  function simFor(name) {
+    if (!name) return { key: "solid", fn: EFFECT_SIMS.solid };
+    for (const [re, key] of EFFECT_MATCHERS) {
+      if (re.test(name)) return { key, fn: EFFECT_SIMS[key] };
+    }
+    // Unknown effect: show it moving, without pretending to know how.
+    return { key: "generic", fn: EFFECT_SIMS.noise };
+  }
+
+  const scale = ([r, g, b], f) => [r * f, g * f, b * f];
+  const noise = (x) => 0.5 + 0.5 * Math.sin(x) * Math.cos(x * 0.53 + 1.7);
+  function hsl(h, s, l) {
+    if (s === 0) { const v = l * 255; return [v, v, v]; }
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    const cv = (t) => {
+      if (t < 0) t += 1; if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    return [cv(h + 1 / 3) * 255, cv(h) * 255, cv(h - 1 / 3) * 255];
+  }
+  function rgbToHslArr([r, g, b]) {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    if (mx === mn) return [0, 0, l];
+    const d = mx - mn, s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    let h;
+    if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (mx === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+    return [h, s, l];
+  }
+  const hexToRgbArr = (hex) => {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+    if (!m) return [255, 255, 255];
+    const v = parseInt(m[1], 16);
+    return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+  };
+
+  const LEDS = 46;
+  const stripRandom = Array.from({ length: LEDS }, () => Math.random());
+
+  function drawStrips(now) {
+    if (lighting) {
+      for (const [key] of STATES) {
+        if (key === "off") continue;
+        const canvas = document.querySelector('canvas[data-strip="' + key + '"]');
+        if (!canvas || !canvas.isConnected) continue;
+
+        const cfg = lighting.states[key];
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        if (!w || !h) continue;
+        if (canvas.width !== w) { canvas.width = w; canvas.height = h; }
+        const ctx = canvas.getContext("2d");
+
+        const base = hexToRgbArr(
+          cfg.useGameColor ? (currentGameColor || cfg.color) : cfg.color);
+        const { fn } = simFor(cfg.effect);
+        // WLED speed is 0-255; keep the preview watchable at both extremes.
+        const speed = cfg.speed == null ? 128 : cfg.speed;
+        const t = (now / 1000) * (0.25 + (speed / 255) * 2.2);
+        const dim = (cfg.brightness == null ? 255 : cfg.brightness) / 255;
+        const lit = cfg.enabled;
+
+        ctx.clearRect(0, 0, w, h);
+        const cell = w / LEDS;
+        let sr = 0, sg = 0, sb = 0;
+        for (let i = 0; i < LEDS; i++) {
+          let [r, g, b] = fn(t, i, LEDS, base, stripRandom);
+          const f = dim * (lit ? 1 : 0.12);
+          r *= f; g *= f; b *= f;
+          sr += r; sg += g; sb += b;
+          ctx.fillStyle = "rgb(" + (r | 0) + "," + (g | 0) + "," + (b | 0) + ")";
+          ctx.fillRect(i * cell, 0, cell + 1, h);
+        }
+        // The card's ambient spill takes the strip's average, so the bloom is
+        // actually derived from what the strip is doing.
+        const card = document.querySelector('[data-card="' + key + '"]');
+        if (card && lit) {
+          card.style.setProperty("--state-color",
+            "rgb(" + ((sr / LEDS) | 0) + "," + ((sg / LEDS) | 0) + "," + ((sb / LEDS) | 0) + ")");
+        }
+      }
+    }
+    requestAnimationFrame(drawStrips);
+  }
+  requestAnimationFrame(drawStrips);
 
   refreshStatus();
   loadLighting();

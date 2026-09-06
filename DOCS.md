@@ -110,10 +110,18 @@ configure each state:
 | Effect speed | Only applied when a matching `number.<light>_speed` entity exists, which is how WLED exposes it. |
 | Fade | Transition time in seconds. |
 
-Each state's card takes on the colour it will produce, so the settings can be
-judged without running them; a card whose effect animates also gets a moving
-sheen paced by its speed setting. The light picker is searchable and grouped
-by room.
+Each state's card previews itself on a simulated LED strip, animated at the
+speed, brightness and colour configured, with the card's surrounding glow
+taken from the strip's average -- so the settings can be judged without
+running them. The simulations are approximations: WLED has around 180
+effects, so names are matched loosely to about a dozen behaviours, and
+anything unrecognised is shown as generic motion rather than guessed at.
+
+With **use game colour** on, the colour swatch becomes the *fallback*, used
+when a game has no usable cover art. Each card states which colour is
+currently in play.
+
+The light picker is searchable and grouped by room.
 
 **Restore previous lighting when the PS5 turns off** snapshots the lights
 when a session starts and puts them back afterwards. If the snapshot is gone
