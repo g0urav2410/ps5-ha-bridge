@@ -6,6 +6,7 @@ const { PsnClient } = require("./lib/psn");
 const { startServer } = require("./lib/server");
 const sharedState = require("./lib/state");
 const { log, logError, logState, resetStateLog } = require("./lib/logger");
+const { GameColors } = require("./lib/gamecolor");
 
 const options = JSON.parse(fs.readFileSync("/data/options.json", "utf8"));
 
@@ -44,7 +45,11 @@ const TOPICS = {
   activity: `ps5-mqtt-bridge/${UNIQUE_ID}/activity`,
   state: `ps5-mqtt-bridge/${UNIQUE_ID}/state`,
   psnAuth: `ps5-mqtt-bridge/${UNIQUE_ID}/psn_auth`,
+  gameColor: `ps5-mqtt-bridge/${UNIQUE_ID}/game_color`,
+  gameColorAttrs: `ps5-mqtt-bridge/${UNIQUE_ID}/game_color/attributes`,
 };
+
+const gameColors = new GameColors();
 
 const psn = new PsnClient();
 startServer(psn, options.ingress_port || 8099, PS5_IP);
@@ -97,6 +102,18 @@ function publishDiscovery() {
         unique_id: `${UNIQUE_ID}_state`,
         icon: "mdi:sony-playstation",
         state_topic: TOPICS.state,
+        availability_topic: TOPICS.availability,
+        device: DEVICE_BLOCK,
+      },
+    },
+    {
+      topic: `homeassistant/sensor/${UNIQUE_ID}_game_color/config`,
+      config: {
+        name: "Game Color",
+        unique_id: `${UNIQUE_ID}_game_color`,
+        icon: "mdi:palette",
+        state_topic: TOPICS.gameColor,
+        json_attributes_topic: TOPICS.gameColorAttrs,
         availability_topic: TOPICS.availability,
         device: DEVICE_BLOCK,
       },
@@ -176,6 +193,8 @@ async function tick() {
       client.publish(TOPICS.power, "OFF", { retain: true });
       client.publish(TOPICS.state, "off", { retain: true });
       client.publish(TOPICS.activity, "none", { retain: true });
+      client.publish(TOPICS.gameColor, "none", { retain: true });
+      client.publish(TOPICS.gameColorAttrs, JSON.stringify({ rgb: null }), { retain: true });
       sharedState.update({ power: null, derivedState: "off", activity: "none" });
       lastPower = "STANDBY";
       fastPollUntil = 0;
@@ -210,6 +229,7 @@ async function tick() {
 
   let derivedState = power === "AWAKE" ? "awake" : "off";
   let activity = power === "AWAKE" ? "unknown" : "none";
+  let gameColor = null;
 
   if (power === "AWAKE" && psn.isPaired) {
     try {
@@ -235,6 +255,8 @@ async function tick() {
       } else if (gameTitle) {
         derivedState = "playing";
         activity = gameTitle;
+        const game = presence?.basicPresence?.gameTitleInfoList?.[0];
+        gameColor = await gameColors.forTitle(game?.npTitleId, game?.conceptIconUrl);
       } else {
         derivedState = "home";
         activity = "Home Screen";
@@ -259,6 +281,12 @@ async function tick() {
     activity = "unknown";
   }
 
+  client.publish(TOPICS.gameColor, gameColor ? gameColor.hex : "none", { retain: true });
+  client.publish(
+    TOPICS.gameColorAttrs,
+    JSON.stringify({ rgb: gameColor ? gameColor.rgb : null }),
+    { retain: true },
+  );
   client.publish(TOPICS.state, derivedState, { retain: true });
   client.publish(TOPICS.activity, activity, { retain: true });
   sharedState.update({ power, derivedState, activity });

@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "express": "^4.21.1",
+    "jpeg-js": "^0.4.4",
     "mqtt": "^5.10.1",
     "psn-api": "^2.13.0"
   }

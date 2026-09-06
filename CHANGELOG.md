@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.4.0
+
+- New `Game Color` sensor. While a game is running, the bridge samples the
+  game's own cover art (which PSN already gives us) and publishes a
+  representative colour, so lighting can match whatever is being played
+  without maintaining a per-game mapping. The hex is the sensor state; an
+  `rgb` attribute holds a `[r, g, b]` list ready to pass to `light.turn_on`.
+
+  Colours are derived by grouping the art's pixels into hue families rather
+  than exact shades -- a sunset spans dozens of oranges, and bucketing by
+  exact value splits that one obvious colour so finely that none of the
+  buckets looks dominant. Near-black, near-white and grey pixels are
+  discarded first (most covers are heavily dark, and without this nearly
+  every game resolves to black). The winning family's hue is then rebuilt at
+  a vivid saturation and mid lightness, because averaging the family's raw
+  RGB comes out washed-out and reads poorly on a strip.
+
+  Each cover is fetched once and cached. Art that yields no usable colour
+  (fully greyscale, all black) publishes `none`, leaving the automation to
+  apply its own fallback.
+
 ## 2.3.2
 
 - Documented the automation example and added a failsafe automation to it,

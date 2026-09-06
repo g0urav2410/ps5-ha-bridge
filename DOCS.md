@@ -11,6 +11,7 @@ Assistant from what's happening on the console.
 | `binary_sensor.<name>_power` | `on` / `off` | No |
 | `sensor.<name>_state` | `off` / `booting` / `home` / `playing` | Only for `booting`/`home`/`playing` — otherwise reads `off`/`awake` |
 | `sensor.<name>_activity` | current game title, `Home Screen`, or `none` | Yes |
+| `sensor.<name>_game_color` | hex colour sampled from the running game's cover art, or `none`. An `rgb` attribute holds `[r, g, b]`. | Yes |
 | `binary_sensor.<name>_psn_connection_problem` | `on` if PSN re-auth is needed | Diagnostic |
 
 ## Configuration
@@ -51,6 +52,49 @@ own refresh token forever after, as long as it keeps running at least once
 every couple of months. If it ever does need to be redone (e.g. you changed
 your PSN password), the `psn_connection_problem` sensor turns on and the
 panel shows "Not connected" again.
+
+## Game colour
+
+While a game is running, the bridge samples that game's cover art and
+publishes a representative colour, so a light can match whatever is being
+played without you maintaining a list of games. Use it like this:
+
+```yaml
+rgb_color: >
+  {{ state_attr('sensor.playstation_5_game_color', 'rgb') or [255, 0, 0] }}
+```
+
+The `or [...]` is the fallback, and it lives in *your* automation rather than
+in the add-on -- some cover art (fully greyscale, or all black) yields no
+usable colour, and the bridge publishes `none` in that case so you can decide
+what should happen.
+
+Two notes on getting a *uniform* colour on a strip:
+
+- WLED's palette must be `Default`. With any other palette selected, the
+  palette overrides `rgb_color` and paints a spread of colours along the
+  strip. Set `select.wled_color_palette` to `Default` in the same automation.
+- Use the `Solid` effect (or set the colour on an animated effect that
+  respects the primary colour, like `Candle Multi`).
+
+### How the colour is chosen
+
+Cover art is not one flat colour, so the bridge looks for the dominant colour
+*family*:
+
+1. Pixels that carry no identity are discarded -- near-black, near-white and
+   greys. Most covers are heavily dark, and skipping this step resolves
+   almost every game to black.
+2. The rest are grouped by hue family, not exact shade. A sunset spans dozens
+   of distinct oranges; bucketing by exact value splits that one obvious
+   colour so finely that no bucket looks dominant.
+3. The largest family wins, nudged slightly toward vivid families.
+4. Its hue is rebuilt at a vivid saturation and mid lightness. Averaging the
+   family's raw RGB instead comes out washed-out -- a vivid orange averages
+   to muddy brick, which reads poorly on a strip.
+
+Each cover is fetched once (at 64px, a couple of KB) and cached for as long
+as the add-on runs.
 
 ## Automations
 

@@ -27,6 +27,9 @@ Combining both gives a state machine richer than plain on/off:
   (`awake` only shows if you skip PSN setup — otherwise it resolves to one
   of the more specific states)
 - `sensor.<name>_activity` — the current game's title, or `Home Screen`, or `none`
+- `sensor.<name>_game_color` — a colour sampled from the running game's cover
+  art (hex as the state, `[r, g, b]` in an `rgb` attribute), so lighting can
+  match whatever is being played. `none` when nothing usable could be derived.
 - `binary_sensor.<name>_psn_auth` — diagnostic "problem" sensor; turns on if
   PSN re-authentication is needed (set up an HA notification on this so you
   actually hear about it instead of finding out weeks later)

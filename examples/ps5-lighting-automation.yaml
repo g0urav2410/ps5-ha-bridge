@@ -9,6 +9,12 @@
 #   sensor.playstation_5_state  - from the PS5 bridge add-on
 #   light.wled                  - the strip
 #   number.wled_speed           - WLED effect speed (0-255), a separate entity
+#   select.wled_color_palette   - WLED palette. Must be "Default" for the
+#                                 strip to show ONE uniform colour; any other
+#                                 palette spreads colours along the strip and
+#                                 ignores the rgb_color you set.
+#   sensor.playstation_5_game_color - colour sampled from the current game's
+#                                 cover art; its 'rgb' attribute is a [r,g,b] list
 #
 # THE FOUR STATES the sensor can report:
 #   off      - standby / rest mode / powered down
@@ -95,18 +101,37 @@ actions:
               # UI, run the effect, drag its speed slider until it looks right,
               # then copy that number here.
               value: 96
+          # Without this, a non-Default palette overrides rgb_color and paints
+          # a spread of colours along the strip instead of the one you asked for.
+          - action: select.select_option
+            target:
+              entity_id: select.wled_color_palette
+            data:
+              option: Default
 
       # ---- IN A GAME: static red, dimmer so it doesn't distract -------------
       - conditions:
           - condition: template
             value_template: "{{ trigger.to_state.state == 'playing' }}"
         sequence:
+          # Palette first: it has to be Default before the colour below will
+          # show as one uniform colour across the whole strip.
+          - action: select.select_option
+            target:
+              entity_id: select.wled_color_palette
+            data:
+              option: Default
           - action: light.turn_on
             target:
               entity_id: light.wled
             data:
               effect: Solid                # no animation
-              rgb_color: [255, 0, 0]
+              # Colour sampled from the game's own cover art. Falls back to red
+              # if the game has no artwork or the colour couldn't be derived.
+              # For a fixed colour instead, just put [255, 0, 0] here.
+              rgb_color: >
+                {{ state_attr('sensor.playstation_5_game_color', 'rgb')
+                   or [255, 0, 0] }}
               brightness: 120              # deliberately lower than 'home'
               transition: 2
           # No speed set here on purpose -- 'Solid' doesn't animate. If you
