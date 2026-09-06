@@ -130,6 +130,11 @@ let fastPollUntil = 0;
 // cloud call along with it at the same rate.
 let lastPresence = null;
 let lastPresenceAt = 0;
+// Last successfully-derived presence result, reused if a presence poll
+// fails transiently -- a dropped network call shouldn't look like the
+// console changed state.
+let lastGoodDerived = null;
+let lastGoodActivity = null;
 
 async function loop() {
   for (;;) {
@@ -175,6 +180,8 @@ async function tick() {
       lastPower = "STANDBY";
       fastPollUntil = 0;
       lastPresence = null;
+      lastGoodDerived = null;
+      lastGoodActivity = null;
       resetStateLog();
     }
     return;
@@ -196,6 +203,8 @@ async function tick() {
   if (power === "STANDBY") {
     fastPollUntil = 0;
     lastPresence = null;
+    lastGoodDerived = null;
+    lastGoodActivity = null;
   }
   lastPower = power;
 
@@ -230,12 +239,20 @@ async function tick() {
         derivedState = "home";
         activity = "Home Screen";
       }
+      lastGoodDerived = derivedState;
+      lastGoodActivity = activity;
     } catch (err) {
       if (err.message === "REAUTH_REQUIRED") {
         logError("PSN refresh token expired or was revoked -- re-pair via the add-on's setup panel.");
         client.publish(TOPICS.psnAuth, "ON", { retain: true });
       } else {
         logError(`Presence poll failed: ${err.message}`);
+        // Transient failure (network blip, Sony hiccup): hold the last known
+        // good values rather than reporting a state change that didn't happen.
+        if (lastGoodDerived !== null) {
+          derivedState = lastGoodDerived;
+          activity = lastGoodActivity;
+        }
       }
     }
   } else if (power === "AWAKE") {

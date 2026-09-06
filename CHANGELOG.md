@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.3.0
+
+- Added a diagnostic endpoint, `/api/presence-raw` on the add-on's Web UI,
+  which returns exactly what Sony's presence API sends back. Useful when the
+  state looks stuck (e.g. always `home` even while a game is running) --
+  the raw payload shows whether `gameTitleInfoList` is actually populated.
+- A transient presence failure no longer looks like a state change. Before,
+  a dropped network call briefly reported `awake`/`unknown` before
+  recovering; the last known good state is now held instead.
+
 ## 2.2.1
 
 - Faster power-off detection. The 3 confirmation polls that rule out a
