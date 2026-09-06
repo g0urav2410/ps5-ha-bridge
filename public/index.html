@@ -342,6 +342,7 @@
 
       <div class="btn-row">
         <button id="saveLighting">Save</button>
+        <button class="secondary" id="stopPreview" style="display:none;">Stop preview &amp; restore</button>
         <span class="note" id="saveNote"></span>
       </div>
     </div>
@@ -853,9 +854,29 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
-      note.className = "note ok"; note.textContent = "Applied.";
+      note.className = "note ok";
+      note.textContent = "Applied — lights restore when you stop, or after 45s.";
+      el("stopPreview").style.display = "inline-block";
     } catch (e) {
       note.className = "note err"; note.textContent = e.message;
+    }
+  });
+
+  el("stopPreview").addEventListener("click", async () => {
+    const note = el("saveNote");
+    const btn = el("stopPreview");
+    btn.disabled = true;
+    note.className = "note"; note.textContent = "Restoring…";
+    try {
+      const res = await fetch("api/lighting/preview/stop", { method: "POST" });
+      const data = await res.json();
+      note.className = "note ok";
+      note.textContent = data.restored ? "Lights restored." : "Nothing to restore.";
+      btn.style.display = "none";
+    } catch (e) {
+      note.className = "note err"; note.textContent = e.message;
+    } finally {
+      btn.disabled = false;
     }
   });
 

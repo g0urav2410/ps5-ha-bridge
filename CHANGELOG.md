@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.9.0
+
+- **"Try it now" can be undone.** It previously applied a setting to your
+  lights and left them that way until the PS5 next changed state, with no way
+  back. It now snapshots the lights first and offers a "Stop preview &
+  restore" button, with an automatic restore after 45 seconds. The preview
+  snapshot is kept separate from the session snapshot, so trying settings out
+  can't clobber the lights the bridge is holding for the end of a session.
+
 ## 2.8.1
 
 - Tightened and brightened the border glow, which was spreading too far and
