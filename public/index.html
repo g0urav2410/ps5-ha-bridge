@@ -108,6 +108,16 @@
   #message.success { color: var(--ok); }
   code { background: var(--card); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
   .hint { font-size: 0.82rem; color: var(--muted); margin-top: 0.5rem; }
+  pre {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 0.7rem;
+    font-size: 0.78rem;
+    overflow-x: auto;
+    max-height: 320px;
+    margin-top: 0.75rem;
+  }
 </style>
 </head>
 <body>
@@ -156,6 +166,19 @@
     <div id="message"></div>
   </div>
 
+  <div class="card" id="diagCard" style="display:none;">
+    <h2>Diagnostics</h2>
+    <p class="hint" style="margin-top:-0.4rem;">
+      Shows exactly what Sony's presence API returns. If the state seems stuck
+      (e.g. always "home" while a game is running), check whether
+      <code>gameTitleInfoList</code> below is empty &mdash; if it is, Sony is
+      withholding the game info, usually because of the console's
+      <em>Online Status and Now Playing</em> privacy setting.
+    </p>
+    <button class="secondary" id="rawButton">Fetch raw presence</button>
+    <pre id="rawOutput" style="display:none;"></pre>
+  </div>
+
   <div class="card" id="pairedCard" style="display:none;">
     <h2>✅ Connected<span id="onlineIdText"></span></h2>
     <p class="hint">Game/activity data is flowing to Home Assistant.</p>
@@ -188,12 +211,14 @@
           el("statusText").textContent = "Connected to PSN";
           el("pairCard").style.display = "none";
           el("pairedCard").style.display = "block";
+          el("diagCard").style.display = "block";
           el("onlineIdText").textContent = data.onlineId ? " as " + data.onlineId : "";
         } else {
           el("statusDot").className = "dot bad";
           el("statusText").textContent = "Not connected to PSN (power on/off still works without it)";
           el("pairCard").style.display = "block";
           el("pairedCard").style.display = "none";
+          el("diagCard").style.display = "none";
         }
       } catch (e) {
         el("statusText").textContent = "Could not reach the add-on";
@@ -242,6 +267,25 @@
       } finally {
         btn.disabled = false;
         btn.textContent = "Connect";
+      }
+    });
+
+    el("rawButton").addEventListener("click", async () => {
+      const out = el("rawOutput");
+      const btn = el("rawButton");
+      btn.disabled = true;
+      btn.textContent = "Fetching...";
+      out.style.display = "block";
+      out.textContent = "Loading...";
+      try {
+        const res = await fetch("api/presence-raw");
+        const data = await res.json();
+        out.textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        out.textContent = "Failed: " + e.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Fetch raw presence";
       }
     });
 

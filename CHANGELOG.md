@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.3.1
+
+- The raw presence diagnostic is now a button in the add-on's panel rather
+  than a URL you have to assemble by hand (the panel lives behind a long
+  Ingress token, so editing its address was awkward).
+
 ## 2.3.0
 
 - Added a diagnostic endpoint, `/api/presence-raw` on the add-on's Web UI,
