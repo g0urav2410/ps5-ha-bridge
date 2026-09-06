@@ -108,6 +108,20 @@
   #message.success { color: var(--ok); }
   code { background: var(--card); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
   .hint { font-size: 0.82rem; color: var(--muted); margin-top: 0.5rem; }
+  .color-bar {
+    height: 34px;
+    border-radius: 7px;
+    margin-top: 0.75rem;
+    border: 1px solid var(--border);
+  }
+  .color-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin: 0.35rem 0 0;
+    display: flex;
+    justify-content: space-between;
+  }
+  .mono { font-family: monospace; }
   pre {
     background: var(--card);
     border: 1px solid var(--border);
@@ -139,6 +153,10 @@
         <div class="label">Activity</div>
         <div class="value" id="activityValue">–</div>
       </div>
+    </div>
+    <div id="colorRow" style="display:none;">
+      <div class="color-bar" id="colorBar"></div>
+      <p class="color-label">Game colour <span class="mono" id="colorHex"></span></p>
     </div>
     <p class="hint">Power detection works right now with no setup. State/Activity fill in once you connect your account below.</p>
   </div>
@@ -205,6 +223,16 @@
         el("stateValue").textContent = data.derivedState || "–";
         el("activityValue").textContent = data.activity || "–";
         el("deviceIp").textContent = data.ps5Ip ? "Watching " + data.ps5Ip : "";
+
+        // Show the sampled game colour, so it's obvious at a glance whether
+        // the cover-art sampling is actually working.
+        if (data.gameColor) {
+          el("colorRow").style.display = "block";
+          el("colorBar").style.background = data.gameColor;
+          el("colorHex").textContent = data.gameColor;
+        } else {
+          el("colorRow").style.display = "none";
+        }
 
         if (data.paired) {
           el("statusDot").className = "dot ok";

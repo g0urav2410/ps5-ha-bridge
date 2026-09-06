@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.4.1
+
+- The add-on's panel now shows the sampled game colour as a swatch beside
+  the live status, so it's obvious at a glance whether cover-art sampling is
+  working without going to Developer Tools. Hidden when no game is running.
+
 ## 2.4.0
 
 - New `Game Color` sensor. While a game is running, the bridge samples the

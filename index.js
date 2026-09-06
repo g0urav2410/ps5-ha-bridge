@@ -195,7 +195,12 @@ async function tick() {
       client.publish(TOPICS.activity, "none", { retain: true });
       client.publish(TOPICS.gameColor, "none", { retain: true });
       client.publish(TOPICS.gameColorAttrs, JSON.stringify({ rgb: null }), { retain: true });
-      sharedState.update({ power: null, derivedState: "off", activity: "none" });
+      sharedState.update({
+        power: null,
+        derivedState: "off",
+        activity: "none",
+        gameColor: null,
+      });
       lastPower = "STANDBY";
       fastPollUntil = 0;
       lastPresence = null;
@@ -289,7 +294,12 @@ async function tick() {
   );
   client.publish(TOPICS.state, derivedState, { retain: true });
   client.publish(TOPICS.activity, activity, { retain: true });
-  sharedState.update({ power, derivedState, activity });
+  sharedState.update({
+    power,
+    derivedState,
+    activity,
+    gameColor: gameColor ? gameColor.hex : null,
+  });
 
   // logState() suppresses repeats, so a console sitting in one state
   // logs once instead of every poll.
