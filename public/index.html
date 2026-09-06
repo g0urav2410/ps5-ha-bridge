@@ -162,11 +162,13 @@
     inset: -13px;
     z-index: -1;
     pointer-events: none;
+    border-radius: 18px;
+    background: var(--state-color, transparent);
     filter: blur(9px);
     opacity: 0;
-    transition: opacity 0.35s;
+    transition: opacity 0.35s, background 0.35s;
   }
-  .state.lit .state-glow { opacity: 1; }
+  .state.lit .state-glow { opacity: 0.9; }
   .state.lit { border-color: color-mix(in srgb, var(--state-color) 40%, var(--border-soft)); }
   .swatch-inline {
     width: 13px; height: 13px; border-radius: 3px; display: inline-block;
@@ -178,6 +180,11 @@
   }
   .colour-note code {
     font-size: 0.72rem; padding: 0.05rem 0.3rem;
+  }
+  .preview-dot {
+    width: 15px; height: 15px; border-radius: 50%; flex: none;
+    background: var(--state-color, var(--muted));
+    box-shadow: 0 0 10px var(--state-color, transparent);
   }
   .preview-dot {
     width: 15px; height: 15px; border-radius: 50%; flex: none;
@@ -533,10 +540,11 @@
     return first ? first.effects : [];
   }
 
-  function effectOptions(selected) {
-    return ['<option value="">(none)</option>']
-      .concat(currentEffects().map((e) =>
-        '<option value="' + esc(e) + '"' + (selected === e ? " selected" : "") + ">" + esc(e) + "</option>"))
+  // A plain <select> is unusable with WLED's ~180 effects, so the field is a
+  // typeahead: type to filter, or leave it blank for no effect.
+  function effectDatalist() {
+    return currentEffects()
+      .map((e) => '<option value="' + esc(e) + '"></option>')
       .join("");
   }
 
@@ -552,7 +560,9 @@
           (c.turnOff !== false ? " checked" : "") + '><span class="track"></span></label>' +
           "<span>Turn lights off when there's no snapshot to restore</span></div>"
       : '<div class="ctrl"><span class="k">Effect</span>' +
-          '<select data-state="' + key + '" data-field="effect">' + effectOptions(c.effect) + "</select></div>" +
+          '<input type="text" list="fx-' + key + '" data-state="' + key + '" data-field="effect" ' +
+            'placeholder="Type to search, or leave blank" value="' + esc(c.effect || "") + '">' +
+          '<datalist id="fx-' + key + '">' + effectDatalist() + "</datalist></div>" +
         '<div class="ctrl"><span class="k">' + (c.useGameColor ? "Fallback" : "Colour") + "</span>" +
           '<input type="color" data-state="' + key + '" data-field="color" value="' + esc(c.color || "#ffffff") + '">' +
           '<span class="switch" style="margin-left:2px;"><label class="toggle sm"><input type="checkbox" data-state="' + key +
@@ -567,7 +577,7 @@
           '<span class="val">' + (c.speed == null ? 128 : c.speed) + "</span></div>";
 
     return '<div class="state" data-card="' + key + '">' +
-      (isOff ? "" : '<canvas class="state-glow" data-glow="' + key + '"></canvas>') +
+      (isOff ? "" : '<div class="state-glow"></div>') +
       '<div class="state-head">' +
         '<span class="' + (key === "off" ? "dot" : "preview-dot") + '" style="background:' + dotColor + '"></span>' +
         "<h3>" + esc(label) + "</h3>" +
@@ -582,10 +592,6 @@
           '<span class="val">' + (c.transition == null ? 2 : c.transition) + "s</span></div>" +
         '<div><button class="secondary tiny" data-preview="' + key + '">Try it now</button></div>' +
       "</div>" +
-      (isOff ? "" :
-        '<div class="strip-wrap"><canvas class="strip" data-strip="' + key + '"></canvas>' +
-        '<p class="strip-caption"><span data-stripname="' + key + '"></span>' +
-        '<span class="approx">approximation</span></p></div>') +
       "</div>";
   }
 
@@ -656,8 +662,7 @@
     const fallback = c.color || "#ffffff";
     // What the lights would actually be set to right now.
     const color = c.useGameColor ? (currentGameColor || fallback) : fallback;
-    // While lit, the animation loop overrides this with the strip's average.
-    if (!c.enabled) card.style.setProperty("--state-color", color);
+    card.style.setProperty("--state-color", color);
     card.classList.toggle("lit", !!c.enabled);
 
     const note = card.querySelector('[data-note="' + key + '"]');
@@ -689,13 +694,6 @@
     const dot = card.querySelector(".preview-dot");
     if (dot) dot.style.background = color;
 
-    const nameEl = card.querySelector('[data-stripname="' + key + '"]');
-    if (nameEl) {
-      const sim = simFor(c.effect);
-      nameEl.textContent = c.effect
-        ? c.effect + (sim.key === "generic" ? " — shown as generic motion" : "")
-        : "No effect — steady colour";
-    }
   }
 
   function applyEnabledLook() {
@@ -750,9 +748,32 @@
   // whole card on every input would destroy the element being interacted
   // with. Only the effect dropdowns are rebuilt.
   function refreshEffectOptions() {
-    for (const sel of document.querySelectorAll('select[data-field="effect"]')) {
-      const key = sel.dataset.state;
-      sel.innerHTML = effectOptions(lighting.states[key].effect);
+    const html = effectDatalist();
+    for (const list of document.querySelectorAll("datalist[id^='fx-']")) {
+      list.innerHTML = html;
+    }
+    // An effect the newly-chosen light can't do would silently do nothing,
+    // so flag it rather than leaving it looking valid.
+    for (const [key] of STATES) {
+      if (key !== "off") validateEffect(key);
+    }
+  }
+
+  function validateEffect(key) {
+    const input = document.querySelector('input[data-state="' + key + '"][data-field="effect"]');
+    if (!input) return;
+    const value = (input.value || "").trim();
+    const known = currentEffects();
+    const bad = value && known.length && !known.includes(value);
+    input.style.borderColor = bad ? "var(--bad)" : "";
+    const existing = input.closest(".ctrl").nextElementSibling;
+    if (existing && existing.classList.contains("effect-warn")) existing.remove();
+    if (bad) {
+      const warn = document.createElement("p");
+      warn.className = "colour-note effect-warn";
+      warn.style.color = "var(--bad)";
+      warn.textContent = "The selected light has no effect called " + value + ".";
+      input.closest(".ctrl").after(warn);
     }
   }
 
@@ -823,6 +844,8 @@
       }
     }
 
+    if (t.dataset.field === "effect") validateEffect(t.dataset.state);
+
     // keep the card's preview honest as settings change
     const c = lighting.states[t.dataset.state];
     if (t.type === "checkbox") c[t.dataset.field] = t.checked;
@@ -834,7 +857,7 @@
   document.addEventListener("change", (ev) => {
     const t = ev.target;
     if (!lighting || !t.dataset || !t.dataset.state) return;
-    if (t.tagName === "SELECT" || t.type === "color") {
+    if (t.type === "color" || t.dataset.field === "effect") {
       lighting.states[t.dataset.state][t.dataset.field] = t.value || null;
       paintState(t.dataset.state);
     }
@@ -892,223 +915,6 @@
       note.className = "note err"; note.textContent = e.message;
     }
   });
-
-
-  // ---- LED strip preview -------------------------------------------------
-  // WLED's effects are its own code, so these are recognisable approximations
-  // rather than reproductions -- enough to tell a scanner from a twinkle
-  // before committing to it, which the colour swatch alone couldn't do.
-  const EFFECT_SIMS = {
-    solid:   (t, i, n, c) => c,
-    breathe: (t, i, n, c) => scale(c, 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * 2))),
-    fade:    (t, i, n, c) => scale(c, 0.15 + 0.85 * (0.5 + 0.5 * Math.sin(t * 1.4))),
-    scanner: (t, i, n, c) => {
-      const pos = (n - 1) * (0.5 + 0.5 * Math.sin(t * 1.6));
-      const d = Math.abs(i - pos);
-      return scale(c, Math.max(0, 1 - d / (n * 0.13)));
-    },
-    chase: (t, i, n, c) => {
-      const phase = (i / n * 6 - t * 1.4) % 1;
-      return scale(c, phase < 0.32 ? 1 : 0.06);
-    },
-    wipe: (t, i, n, c) => {
-      const head = ((t * 0.55) % 1) * n;
-      return scale(c, i < head ? 1 : 0.06);
-    },
-    rainbow: (t, i, n) => hsl(((i / n) + t * 0.14) % 1, 0.85, 0.55),
-    colorloop: (t, i, n) => hsl(((i / n) * 0.35 + t * 0.09) % 1, 0.8, 0.55),
-    candle: (t, i, n, c, rnd) => scale(c, 0.45 + 0.55 * noise(t * 2.2 + rnd[i] * 9)),
-    twinkle: (t, i, n, c, rnd) => {
-      const ph = (t * 0.85 + rnd[i] * 6.28) % 6.28;
-      const v = Math.max(0, Math.sin(ph));
-      return scale(c, 0.05 + Math.pow(v, 7) * 0.95);
-    },
-    fireworks: (t, i, n, c, rnd) => {
-      const burst = Math.floor(t * 0.8);
-      const centre = rnd[(burst * 7) % rnd.length] * n;
-      const age = (t * 0.8) % 1;
-      const d = Math.abs(i - centre);
-      const reach = age * n * 0.3;
-      const v = d < reach ? Math.max(0, 1 - age) * Math.max(0, 1 - d / (reach + 1)) : 0;
-      return scale(c, 0.04 + v);
-    },
-    aurora: (t, i, n, c) => {
-      const w = 0.5 + 0.5 * Math.sin(i / n * 3.1 + t * 0.7)
-                    * Math.sin(i / n * 1.7 - t * 0.45);
-      const [h, sa] = rgbToHslArr(c);
-      return hsl((h + w * 0.09) % 1, sa, 0.28 + w * 0.34);
-    },
-    noise: (t, i, n, c) => {
-      const w = noise(i * 0.25 + t * 1.1);
-      const [h, sa] = rgbToHslArr(c);
-      return hsl((h + w * 0.06) % 1, sa, 0.2 + w * 0.45);
-    },
-  };
-
-  // Names are matched loosely, since WLED ships ~180 of them and many are
-  // variations on the same handful of behaviours.
-  const EFFECT_MATCHERS = [
-    [/^solid$/i, "solid"],
-    [/breath|pulse|heartbeat/i, "breathe"],
-    [/scan|larson|sinelon|ripple|bounc|ping/i, "scanner"],
-    [/chase|running|theater|march/i, "chase"],
-    [/wipe|loading|percent/i, "wipe"],
-    [/rainbow|spectrum/i, "rainbow"],
-    [/colorloop|colorwave|palette|blend|flow/i, "colorloop"],
-    [/candle|fire|flicker|lava|ember/i, "candle"],
-    [/twinkle|sparkle|glitter|star|dissolve|popcorn/i, "twinkle"],
-    [/firework|starburst|drip|rain|meteor|comet/i, "fireworks"],
-    [/aurora|pacifica|lake|plasma|swirl|soap|cloud|water/i, "aurora"],
-    [/noise|perlin|phased|sine|juggle|bpm/i, "noise"],
-  ];
-
-  function simFor(name) {
-    if (!name) return { key: "solid", fn: EFFECT_SIMS.solid };
-    for (const [re, key] of EFFECT_MATCHERS) {
-      if (re.test(name)) return { key, fn: EFFECT_SIMS[key] };
-    }
-    // Unknown effect: show it moving, without pretending to know how.
-    return { key: "generic", fn: EFFECT_SIMS.noise };
-  }
-
-  const scale = ([r, g, b], f) => [r * f, g * f, b * f];
-  const noise = (x) => 0.5 + 0.5 * Math.sin(x) * Math.cos(x * 0.53 + 1.7);
-  function hsl(h, s, l) {
-    if (s === 0) { const v = l * 255; return [v, v, v]; }
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
-    const cv = (t) => {
-      if (t < 0) t += 1; if (t > 1) t -= 1;
-      if (t < 1 / 6) return p + (q - p) * 6 * t;
-      if (t < 1 / 2) return q;
-      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-      return p;
-    };
-    return [cv(h + 1 / 3) * 255, cv(h) * 255, cv(h - 1 / 3) * 255];
-  }
-  function rgbToHslArr([r, g, b]) {
-    r /= 255; g /= 255; b /= 255;
-    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
-    if (mx === mn) return [0, 0, l];
-    const d = mx - mn, s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
-    let h;
-    if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-    else if (mx === g) h = ((b - r) / d + 2) / 6;
-    else h = ((r - g) / d + 4) / 6;
-    return [h, s, l];
-  }
-  const hexToRgbArr = (hex) => {
-    const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
-    if (!m) return [255, 255, 255];
-    const v = parseInt(m[1], 16);
-    return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
-  };
-
-  const LEDS = 46;
-  const PERIMETER_LEDS = 76;
-  const GLOW_PAD = 13; // must match .state-glow inset
-  const stripRandom = Array.from({ length: Math.max(LEDS, PERIMETER_LEDS) }, () => Math.random());
-
-  // Walk a rounded rectangle's edge, returning where LED `i` of `n` sits.
-  // The strip starts bottom-centre and runs clockwise, which is roughly how
-  // one gets taped around a TV.
-  function perimeterPoint(i, n, w, h, pad) {
-    const x0 = pad, y0 = pad, x1 = w - pad, y1 = h - pad;
-    const bw = x1 - x0, bh = y1 - y0;
-    const total = 2 * (bw + bh);
-    let d = ((i / n) * total + bw / 2) % total;
-
-    if (d < bw) return [x0 + d, y1];            // bottom, left to right
-    d -= bw;
-    if (d < bh) return [x1, y1 - d];            // right, bottom to top
-    d -= bh;
-    if (d < bw) return [x1 - d, y0];            // top, right to left
-    d -= bw;
-    return [x0, y0 + d];                        // left, top to bottom
-  }
-
-  function renderEffect(cfg, now, count) {
-    const base = hexToRgbArr(cfg.useGameColor ? (currentGameColor || cfg.color) : cfg.color);
-    const { fn } = simFor(cfg.effect);
-    const speed = cfg.speed == null ? 128 : cfg.speed;
-    const t = (now / 1000) * (0.25 + (speed / 255) * 2.2);
-    const dim = (cfg.brightness == null ? 255 : cfg.brightness) / 255;
-    const f = dim * (cfg.enabled ? 1 : 0.12);
-    const out = [];
-    for (let i = 0; i < count; i++) {
-      const [r, g, b] = fn(t, i, count, base, stripRandom);
-      out.push([r * f, g * f, b * f]);
-    }
-    return out;
-  }
-
-  function drawStrips(now) {
-    if (lighting) {
-      for (const [key] of STATES) {
-        if (key === "off") continue;
-        const card = document.querySelector('[data-card="' + key + '"]');
-        if (!card || !card.isConnected) continue;
-        const cfg = lighting.states[key];
-
-        // --- the strip wrapped around the card, blurred into a spill ---
-        const glow = card.querySelector('canvas[data-glow="' + key + '"]');
-        if (glow) {
-          const gw = card.offsetWidth + GLOW_PAD * 2;
-          const gh = card.offsetHeight + GLOW_PAD * 2;
-          if (gw > 0 && gh > 0) {
-            if (glow.width !== gw || glow.height !== gh) { glow.width = gw; glow.height = gh; }
-            const gctx = glow.getContext("2d");
-            gctx.clearRect(0, 0, gw, gh);
-            const leds = renderEffect(cfg, now, PERIMETER_LEDS);
-            const dotR = Math.max(7, Math.min(gw, gh) * 0.035);
-            // Additive, so overlapping LEDs sum the way real light does
-            // rather than each one washing out the last.
-            gctx.globalCompositeOperation = "lighter";
-            for (let i = 0; i < PERIMETER_LEDS; i++) {
-              const [x, y] = perimeterPoint(i, PERIMETER_LEDS, gw, gh, GLOW_PAD + 3);
-              const [r, g, b] = leds[i];
-              if (r + g + b < 8) continue;
-              const col = (r|0) + "," + (g|0) + "," + (b|0);
-              const grad = gctx.createRadialGradient(x, y, 0, x, y, dotR);
-              grad.addColorStop(0, "rgba(" + col + ",1)");
-              grad.addColorStop(0.45, "rgba(" + col + ",0.75)");
-              grad.addColorStop(1, "rgba(" + col + ",0)");
-              gctx.fillStyle = grad;
-              gctx.beginPath();
-              gctx.arc(x, y, dotR, 0, 6.284);
-              gctx.fill();
-            }
-            gctx.globalCompositeOperation = "source-over";
-          }
-        }
-
-        // --- the crisp readout, for judging the effect itself ---
-        const canvas = card.querySelector('canvas[data-strip="' + key + '"]');
-        if (canvas) {
-          const w = canvas.clientWidth, h = canvas.clientHeight;
-          if (w && h) {
-            if (canvas.width !== w) { canvas.width = w; canvas.height = h; }
-            const ctx = canvas.getContext("2d");
-            ctx.clearRect(0, 0, w, h);
-            const leds = renderEffect(cfg, now, LEDS);
-            const cell = w / LEDS;
-            let sr = 0, sg = 0, sb = 0;
-            for (let i = 0; i < LEDS; i++) {
-              const [r, g, b] = leds[i];
-              sr += r; sg += g; sb += b;
-              ctx.fillStyle = "rgb(" + (r|0) + "," + (g|0) + "," + (b|0) + ")";
-              ctx.fillRect(i * cell, 0, cell + 1, h);
-            }
-            if (cfg.enabled) {
-              card.style.setProperty("--state-color",
-                "rgb(" + ((sr/LEDS)|0) + "," + ((sg/LEDS)|0) + "," + ((sb/LEDS)|0) + ")");
-            }
-          }
-        }
-      }
-    }
-    requestAnimationFrame(drawStrips);
-  }
-  requestAnimationFrame(drawStrips);
 
   refreshStatus();
   loadLighting();

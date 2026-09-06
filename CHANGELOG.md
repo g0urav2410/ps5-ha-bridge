@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.10.0
+
+- **Removed the effect simulation.** It was approximating about a dozen
+  behaviours across WLED's ~180 effects, and side by side with a real strip
+  several were plainly wrong -- anything in the Aurora/Pacifica/Plasma/Noise
+  family shared one generic "flowing" animation and looked nothing like the
+  real thing. A preview that misleads is worse than none, so the cards now
+  show only what can be stated accurately: the colour that will actually be
+  used, as a steady glow. For seeing an effect, "Try it now" runs it on the
+  real lights, and is undoable as of 2.9.0.
+- **Effects are searchable.** The field is now a typeahead rather than a
+  dropdown, which was unusable at ~180 entries. Typing an effect the selected
+  light doesn't have is flagged, rather than silently doing nothing.
+
 ## 2.9.0
 
 - **"Try it now" can be undone.** It previously applied a setting to your

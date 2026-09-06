@@ -104,16 +104,19 @@ configure each state:
 
 | Setting | Notes |
 |---|---|
-| Effect | Comes from the light's own effect list. Only meaningful for lights that have one (WLED does). |
+| Effect | Typeahead over the light's own effect list. Leave blank for none. Only meaningful for lights that have effects (WLED does). |
 | Colour | A fixed colour, or **use game colour** to take it from the running game's cover art. |
 | Brightness | 0-255. |
 | Effect speed | Only applied when a matching `number.<light>_speed` entity exists, which is how WLED exposes it. |
 | Fade | Transition time in seconds. |
 
-Each state's card previews itself: the simulated strip runs around the card's
-border the way a bias light wraps a TV, blurred so what you see is the spill,
-with a crisp bar underneath for judging the effect itself. Both animate at
-the speed, brightness and colour configured. The simulations are approximations: WLED has around 180
+Each state's card carries a glow in the colour it will actually use, so
+colours can be compared at a glance. Effects are not simulated -- WLED has
+around 180 of them and any approximation would mislead -- so use "Try it
+now" to see one on the real lights.
+
+The effect field is a typeahead: start typing to filter. An effect the
+selected light doesn't have is flagged. The simulations are approximations: WLED has around 180
 effects, so names are matched loosely to about a dozen behaviours, and
 anything unrecognised is shown as generic motion rather than guessed at.
 
