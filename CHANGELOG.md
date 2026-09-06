@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.10.2
+
+- Fixed the effect list being invisible. It always opened downward with a
+  fixed height, so on a field low in the window it rendered past the bottom
+  and couldn't be seen at all. It now opens whichever way there's room and
+  sizes itself to the space available. It was only ever tested against a
+  stub with six effects, which is why this went unnoticed.
+- The dropdown is opaque now; it used the translucent panel colour, so page
+  content showed through it.
+- Added a count ("7 of 184 effects"), since with a list this long it isn't
+  otherwise obvious how much is there or that filtering is working. No cap
+  is applied -- every effect the light reports is listed.
+
 ## 2.10.1
 
 - The effect field now has a real dropdown. It was a `<datalist>`, which only

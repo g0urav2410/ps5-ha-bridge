@@ -13,6 +13,7 @@
     --bg-wash-1: rgba(124, 58, 237, 0.16);
     --bg-wash-2: rgba(6, 182, 212, 0.13);
     --panel: rgba(23, 17, 38, 0.82);
+    --panel-solid: #181128;
     --inset: rgba(13, 9, 24, 0.75);
     --border: #2e2450;
     --border-soft: #2a2047;
@@ -29,6 +30,7 @@
   }
   :root[data-theme="light"] {
     --bg: #f7f5fc;
+    --panel-solid: #ffffff;
     --bg-wash-1: rgba(124, 58, 237, 0.07);
     --bg-wash-2: rgba(6, 182, 212, 0.06);
     --panel: #ffffff;
@@ -49,6 +51,7 @@
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
       --bg: #f7f5fc;
+      --panel-solid: #ffffff;
       --bg-wash-1: rgba(124, 58, 237, 0.07);
       --bg-wash-2: rgba(6, 182, 212, 0.06);
       --panel: #ffffff;
@@ -188,12 +191,18 @@
   .fx-wrap input { flex: 1; min-width: 0; }
   .fx-list {
     position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-    max-height: 210px; overflow-y: auto; z-index: 30;
-    background: var(--panel); border: 1px solid var(--chip-border);
-    border-radius: 8px; box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+    overflow-y: auto; z-index: 30;
+    background: var(--panel-solid); border: 1px solid var(--chip-border);
+    border-radius: 8px; box-shadow: 0 14px 34px rgba(0,0,0,0.55);
     display: none; padding: 4px;
   }
   .fx-list.open { display: block; }
+  .fx-list.above { top: auto; bottom: calc(100% + 4px); }
+  .fx-count {
+    padding: 5px 9px 6px; font-size: 0.7rem; color: var(--muted);
+    border-bottom: 1px solid var(--border-soft); margin-bottom: 3px;
+    position: sticky; top: 0; background: var(--panel-solid);
+  }
   .fx-opt { padding: 6px 9px; border-radius: 5px; font-size: 0.83rem; cursor: pointer; }
   .fx-opt:hover, .fx-opt.active { background: rgba(168,85,247,0.22); color: var(--fg); }
   .fx-opt.none { color: var(--muted); font-style: italic; }
@@ -570,6 +579,9 @@
       return;
     }
     list.innerHTML =
+      '<p class="fx-count">' +
+        (q ? matches.length + " of " + all.length + " effects" : all.length + " effects") +
+      "</p>" +
       '<div class="fx-opt none" data-fx="">No effect</div>' +
       (matches.length
         ? matches.map((e) => '<div class="fx-opt" data-fx="' + esc(e) + '">' + esc(e) + "</div>").join("")
@@ -580,7 +592,19 @@
     closeAllFx();
     renderFxList(key);
     const list = document.querySelector('[data-fxlist="' + key + '"]');
-    if (list) list.classList.add("open");
+    const input = document.querySelector('input[data-state="' + key + '"][data-field="effect"]');
+    if (!list || !input) return;
+
+    // With ~180 effects the list is always taller than the space available,
+    // so pick whichever side has more room and size it to fit -- otherwise
+    // it opens past the bottom of the window and can't be seen at all.
+    const r = input.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom - 12;
+    const above = r.top - 12;
+    const useAbove = below < 180 && above > below;
+    list.classList.toggle("above", useAbove);
+    list.style.maxHeight = Math.max(140, Math.floor(useAbove ? above : below)) + "px";
+    list.classList.add("open");
   }
 
   function closeAllFx() {
@@ -854,6 +878,13 @@
   document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape") closeAllFx();
   });
+
+  for (const evt of ["scroll", "resize"]) {
+    window.addEventListener(evt, () => {
+      const open = document.querySelector(".fx-list.open");
+      if (open) openFx(open.dataset.fxlist);
+    }, { passive: true });
+  }
 
   el("lightSearch").addEventListener("input", () => {
     if (lighting) renderLights();
