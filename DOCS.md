@@ -110,6 +110,11 @@ configure each state:
 | Effect speed | Only applied when a matching `number.<light>_speed` entity exists, which is how WLED exposes it. |
 | Fade | Transition time in seconds. |
 
+Each state's card takes on the colour it will produce, so the settings can be
+judged without running them; a card whose effect animates also gets a moving
+sheen paced by its speed setting. The light picker is searchable and grouped
+by room.
+
 **Restore previous lighting when the PS5 turns off** snapshots the lights
 when a session starts and puts them back afterwards. If the snapshot is gone
 (Home Assistant restarted mid-session), the lights are simply turned off.

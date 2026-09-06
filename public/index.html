@@ -130,7 +130,13 @@
   .swatch { width: 78px; height: 42px; border-radius: 9px; flex: none; border: 1px solid var(--border); }
 
   /* chips (light pickers) */
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .area-group { margin-bottom: 11px; }
+  .area-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 5px; opacity: 0.8; }
+  .picker-head { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+  .picker-head input { flex: 1; }
+  .sel-count { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+  .no-match { font-size: 0.8rem; color: var(--muted); }
   .chip {
     font-size: 0.8rem; padding: 6px 12px; border-radius: 20px; cursor: pointer;
     background: var(--chip); border: 1px solid var(--chip-border); color: var(--muted);
@@ -139,7 +145,32 @@
   .chip.sel { background: rgba(168,85,247,0.17); border-color: var(--accent); color: var(--fg); box-shadow: var(--glow-soft); }
 
   /* per-state cards */
-  .state { background: var(--inset); border: 1px solid var(--border-soft); border-radius: 11px; margin-bottom: 9px; }
+  /* Each card carries the colour it will actually produce, so the settings
+     can be judged at a glance instead of by running them. */
+  .state {
+    background: var(--inset);
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--state-color, var(--border-soft));
+    border-radius: 11px; margin-bottom: 9px;
+    position: relative; overflow: hidden;
+    transition: box-shadow 0.25s, border-color 0.25s;
+  }
+  .state.lit { box-shadow: inset 0 0 34px -14px var(--state-color), 0 0 0 1px var(--state-color); }
+  /* A moving effect gets a drifting sheen; a static one stays still. Speed
+     drives the duration, so the slider has a visible consequence here. */
+  .state.animated::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(115deg, transparent 35%, var(--state-color) 50%, transparent 65%);
+    opacity: 0.16;
+    animation: sheen var(--sheen-duration, 3s) linear infinite;
+  }
+  @keyframes sheen { from { transform: translateX(-60%); } to { transform: translateX(60%); } }
+  @media (prefers-reduced-motion: reduce) { .state.animated::before { animation: none; } }
+  .preview-dot {
+    width: 15px; height: 15px; border-radius: 50%; flex: none;
+    background: var(--state-color, var(--muted));
+    box-shadow: 0 0 9px var(--state-color, transparent);
+  }
   .state-head { display: flex; align-items: center; gap: 10px; padding: 12px 13px; }
   .state-head h3 { margin: 0; font-size: 0.9rem; flex: 1; }
   .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
@@ -268,7 +299,11 @@
 
     <div id="lightingBody">
       <p class="caps">Lights to control</p>
-      <div class="chips" id="lightsList"></div>
+      <div class="picker-head">
+        <input type="text" id="lightSearch" placeholder="Search lights…">
+        <span class="sel-count" id="selCount"></span>
+      </div>
+      <div id="lightsList" style="margin-bottom:15px;"></div>
 
       <div class="switch" style="margin-bottom:14px;">
         <label class="toggle sm"><input type="checkbox" id="restoreOnOff"><span class="track"></span></label>
@@ -366,6 +401,10 @@
       el("vState").textContent = PRETTY[data.derivedState] || data.derivedState || "–";
       el("vActivity").textContent = data.activity && data.activity !== "none" ? data.activity : "–";
 
+      if (data.gameColor !== currentGameColor) {
+        currentGameColor = data.gameColor || null;
+        if (lighting) for (const [k] of STATES) paintState(k);
+      }
       if (data.gameColor) {
         el("colorRow").style.display = "flex";
         el("colorSwatch").style.background = data.gameColor;
@@ -453,6 +492,7 @@
   ];
   let lighting = null;
   let availableLights = [];
+  let currentGameColor = null;
 
   const esc = (v) => String(v).replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -497,9 +537,9 @@
           '<input type="range" min="0" max="255" value="' + (c.speed == null ? 128 : c.speed) + '" data-state="' + key + '" data-field="speed">' +
           '<span class="val">' + (c.speed == null ? 128 : c.speed) + "</span></div>";
 
-    return '<div class="state">' +
+    return '<div class="state" data-card="' + key + '">' +
       '<div class="state-head">' +
-        '<span class="dot" style="background:' + dotColor + ';box-shadow:0 0 8px ' + dotColor + '"></span>' +
+        '<span class="' + (key === "off" ? "dot" : "preview-dot") + '" style="background:' + dotColor + '"></span>' +
         "<h3>" + esc(label) + "</h3>" +
         tags.map((t) => '<span class="tag">' + t + "</span>").join("") +
         '<label class="toggle sm"><input type="checkbox" data-state="' + key + '" data-field="enabled"' +
@@ -514,16 +554,85 @@
       "</div></div>";
   }
 
+  // A big Home Assistant can have dozens of lights, so the picker is
+  // searchable and grouped by room. Selected lights always render, even when
+  // filtered out, so it's never unclear what's currently chosen.
   function renderLights() {
-    el("lightsList").innerHTML = availableLights.length
-      ? availableLights.map((l) =>
-          '<span class="chip' + (lighting.lights.includes(l.entity_id) ? " sel" : "") +
-          '" data-light="' + esc(l.entity_id) + '">' + esc(l.name) + "</span>").join("")
-      : '<span class="hint">No lights found in Home Assistant.</span>';
+    const box = el("lightsList");
+    if (!availableLights.length) {
+      box.innerHTML = '<span class="hint">No lights found in Home Assistant.</span>';
+      el("selCount").textContent = "";
+      return;
+    }
+
+    const q = (el("lightSearch").value || "").trim().toLowerCase();
+    const visible = availableLights.filter((l) =>
+      !q ||
+      lighting.lights.includes(l.entity_id) ||
+      l.name.toLowerCase().includes(q) ||
+      l.entity_id.toLowerCase().includes(q) ||
+      (l.area || "").toLowerCase().includes(q));
+
+    const groups = new Map();
+    for (const l of visible) {
+      const key = l.area || "Other";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(l);
+    }
+
+    const chip = (l) =>
+      '<span class="chip' + (lighting.lights.includes(l.entity_id) ? " sel" : "") +
+      '" data-light="' + esc(l.entity_id) + '" title="' + esc(l.entity_id) + '">' +
+      esc(l.name) + "</span>";
+
+    // With only one group there's no grouping to show, so skip the heading.
+    const single = groups.size <= 1;
+    box.innerHTML = visible.length
+      ? [...groups.entries()].map(([area, lights]) =>
+          '<div class="area-group">' +
+          (single ? "" : '<p class="area-label">' + esc(area) + "</p>") +
+          '<div class="chips">' + lights.map(chip).join("") + "</div></div>").join("")
+      : '<p class="no-match">Nothing matches “' + esc(q) + '”.</p>';
+
+    const n = lighting.lights.length;
+    el("selCount").textContent = n
+      ? n + " selected"
+      : availableLights.length + " available";
   }
 
   function renderStates() {
     el("stateBlocks").innerHTML = STATES.map((s) => stateBlock(s[0], s[1], s[2])).join("");
+    for (const [key] of STATES) paintState(key);
+  }
+
+  // Colour the card with whatever it will actually produce: the configured
+  // colour, or the live game colour when that's what it'll use.
+  function paintState(key) {
+    const card = document.querySelector('[data-card="' + key + '"]');
+    if (!card) return;
+    const c = lighting.states[key];
+
+    if (key === "off") {
+      card.style.removeProperty("--state-color");
+      card.classList.remove("lit", "animated");
+      return;
+    }
+
+    const color = c.useGameColor ? (currentGameColor || "#7c3aed") : (c.color || "#ffffff");
+    card.style.setProperty("--state-color", color);
+    card.classList.toggle("lit", !!c.enabled);
+
+    // 'Solid' (and no effect at all) don't move, so they shouldn't shimmer.
+    const moving = !!c.effect && c.effect !== "Solid" && !!c.enabled;
+    card.classList.toggle("animated", moving);
+    if (moving) {
+      // WLED speed is 0-255; map it to something watchable, faster = shorter.
+      const speed = c.speed == null ? 128 : c.speed;
+      card.style.setProperty("--sheen-duration", (0.9 + (255 - speed) / 255 * 4.5).toFixed(2) + "s");
+    }
+
+    const dot = card.querySelector(".preview-dot");
+    if (dot) dot.style.background = color;
   }
 
   function applyEnabledLook() {
@@ -592,6 +701,13 @@
     if (i === -1) lighting.lights.push(id); else lighting.lights.splice(i, 1);
     chip.classList.toggle("sel");
     refreshEffectOptions();
+    el("selCount").textContent = lighting.lights.length
+      ? lighting.lights.length + " selected"
+      : availableLights.length + " available";
+  });
+
+  el("lightSearch").addEventListener("input", () => {
+    if (lighting) renderLights();
   });
 
   el("lightingEnabled").addEventListener("change", () => {
@@ -625,6 +741,22 @@
     if (t.dataset.field === "useGameColor") {
       const picker = document.querySelector('input[type=color][data-state="' + t.dataset.state + '"]');
       if (picker) picker.disabled = t.checked;
+    }
+
+    // keep the card's preview honest as settings change
+    const c = lighting.states[t.dataset.state];
+    if (t.type === "checkbox") c[t.dataset.field] = t.checked;
+    else if (t.type === "range") c[t.dataset.field] = Number(t.value);
+    else c[t.dataset.field] = t.value || null;
+    paintState(t.dataset.state);
+  });
+
+  document.addEventListener("change", (ev) => {
+    const t = ev.target;
+    if (!lighting || !t.dataset || !t.dataset.state) return;
+    if (t.tagName === "SELECT" || t.type === "color") {
+      lighting.states[t.dataset.state][t.dataset.field] = t.value || null;
+      paintState(t.dataset.state);
     }
   });
 

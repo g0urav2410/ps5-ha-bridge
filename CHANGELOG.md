@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.6.0
+
+- The light picker is now searchable and grouped by room, since pulling in
+  every `light.` entity gets unwieldy on a large Home Assistant. Areas come
+  from the template API; if that call fails the lights simply aren't grouped.
+  Selected lights stay visible even when filtered out, so it's never unclear
+  what's currently chosen.
+- Each state card now previews itself: it takes on the colour it will
+  actually produce (including the live game colour where that's what it will
+  use), and an animated effect gets a drifting sheen whose pace follows the
+  speed slider. A `Solid` effect stays still, because it does.
+
 ## 2.5.0
 
 - **Lighting can now be configured in the add-on's panel**, instead of by
