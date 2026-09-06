@@ -96,6 +96,35 @@ Cover art is not one flat colour, so the bridge looks for the dominant colour
 Each cover is fetched once (at 64px, a couple of KB) and cached for as long
 as the add-on runs.
 
+## Lighting (built in)
+
+The add-on's panel can drive your lights directly, so no automation is
+needed. Turn on **Enable built-in lighting control**, pick the lights, and
+configure each state:
+
+| Setting | Notes |
+|---|---|
+| Effect | Comes from the light's own effect list. Only meaningful for lights that have one (WLED does). |
+| Colour | A fixed colour, or **use game colour** to take it from the running game's cover art. |
+| Brightness | 0-255. |
+| Effect speed | Only applied when a matching `number.<light>_speed` entity exists, which is how WLED exposes it. |
+| Fade | Transition time in seconds. |
+
+**Restore previous lighting when the PS5 turns off** snapshots the lights
+when a session starts and puts them back afterwards. If the snapshot is gone
+(Home Assistant restarted mid-session), the lights are simply turned off.
+
+The WLED palette is forced to `Default` before applying a colour, since any
+other palette overrides the colour and spreads a gradient along the strip.
+
+This needs the `homeassistant_api` permission, which the add-on declares --
+Home Assistant will ask you to approve it.
+
+### Prefer automations instead?
+
+Leave built-in lighting switched off and the add-on won't touch your lights;
+drive them from `sensor.<name>_state` as before.
+
 ## Automations
 
 A worked example, heavily commented, lives in the repo at

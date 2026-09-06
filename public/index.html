@@ -2,328 +2,668 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>PS5 Bridge Setup</title>
+<title>PS5 Bridge</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+  /* Dark is the design's home ground; the light palette keeps the same
+     purple/cyan identity but drops the glow, which reads as smudge on a
+     light background. */
   :root {
-    color-scheme: light dark;
-    --fg: #1a1a1a;
-    --bg: #ffffff;
-    --muted: #6b7280;
-    --border: rgba(128,128,128,0.25);
-    --card: rgba(128,128,128,0.06);
-    --accent: #0066cc;
-    --ok: #22c55e;
-    --bad: #ef4444;
+    --bg: #0a0713;
+    --bg-wash-1: rgba(124, 58, 237, 0.16);
+    --bg-wash-2: rgba(6, 182, 212, 0.13);
+    --panel: rgba(23, 17, 38, 0.82);
+    --inset: rgba(13, 9, 24, 0.75);
+    --border: #2e2450;
+    --border-soft: #2a2047;
+    --fg: #f0e9ff;
+    --muted: #9d8fc0;
+    --accent: #a855f7;
+    --accent-2: #22d3ee;
+    --ok: #4ade80;
+    --bad: #f43f5e;
+    --glow: 0 0 16px rgba(168, 85, 247, 0.4);
+    --glow-soft: 0 0 12px rgba(34, 211, 238, 0.2);
+    --chip: rgba(13, 9, 24, 0.8);
+    --chip-border: #34285c;
   }
-  @media (prefers-color-scheme: dark) {
-    :root { --fg: #f2f2f2; --bg: #16181c; --card: rgba(255,255,255,0.05); }
+  :root[data-theme="light"] {
+    --bg: #f7f5fc;
+    --bg-wash-1: rgba(124, 58, 237, 0.07);
+    --bg-wash-2: rgba(6, 182, 212, 0.06);
+    --panel: #ffffff;
+    --inset: #faf9fd;
+    --border: #e4dff2;
+    --border-soft: #ece8f6;
+    --fg: #1b1430;
+    --muted: #6b6288;
+    --accent: #7c3aed;
+    --accent-2: #0891b2;
+    --ok: #16a34a;
+    --bad: #e11d48;
+    --glow: 0 1px 3px rgba(124, 58, 237, 0.18);
+    --glow-soft: none;
+    --chip: #f4f1fb;
+    --chip-border: #e0d9f2;
   }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f7f5fc;
+      --bg-wash-1: rgba(124, 58, 237, 0.07);
+      --bg-wash-2: rgba(6, 182, 212, 0.06);
+      --panel: #ffffff;
+      --inset: #faf9fd;
+      --border: #e4dff2;
+      --border-soft: #ece8f6;
+      --fg: #1b1430;
+      --muted: #6b6288;
+      --accent: #7c3aed;
+      --accent-2: #0891b2;
+      --ok: #16a34a;
+      --bad: #e11d48;
+      --glow: 0 1px 3px rgba(124, 58, 237, 0.18);
+      --glow-soft: none;
+      --chip: #f4f1fb;
+      --chip-border: #e0d9f2;
+    }
+  }
+
   * { box-sizing: border-box; }
   body {
+    margin: 0;
+    padding: 20px 16px 48px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    max-width: 620px;
-    margin: 1.5rem auto;
-    padding: 0 1rem 3rem;
+    color: var(--fg);
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 12% 6%, var(--bg-wash-1), transparent 42%),
+      radial-gradient(circle at 88% 84%, var(--bg-wash-2), transparent 45%);
+    background-attachment: fixed;
     line-height: 1.5;
-    color: var(--fg);
-    background: var(--bg);
   }
-  h1 { font-size: 1.35rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
-  .subtitle { color: var(--muted); margin-top: 0; margin-bottom: 1.5rem; font-size: 0.92rem; }
-  .card {
-    border: 1px solid var(--border);
-    background: var(--card);
-    border-radius: 12px;
-    padding: 1.25rem;
-    margin-bottom: 1.1rem;
-  }
-  .card h2 { font-size: 1rem; margin: 0 0 0.75rem; }
+  .wrap { max-width: 640px; margin: 0 auto; }
 
-  /* live status grid */
-  .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
-  .status-cell { text-align: center; padding: 0.6rem 0.4rem; border-radius: 8px; background: var(--card); }
-  .status-cell .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
-  .status-cell .value { font-size: 0.95rem; font-weight: 600; margin-top: 0.2rem; word-break: break-word; }
-  .pill { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
-  .dot.ok { background: var(--ok); }
-  .dot.bad { background: var(--bad); }
-  .dot.idle { background: var(--muted); }
+  /* header */
+  .hdr { display: flex; align-items: center; gap: 13px; margin-bottom: 18px; }
+  .logo {
+    width: 42px; height: 42px; border-radius: 12px; flex: none;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 0.9rem; color: #fff;
+    background: linear-gradient(145deg, var(--accent), #c026d3);
+    box-shadow: var(--glow);
+  }
+  .hdr h1 { margin: 0; font-size: 1.15rem; }
+  .hdr .sub { margin: 1px 0 0; font-size: 0.78rem; color: var(--muted); }
+  .pill {
+    margin-left: auto; font-size: 0.63rem; font-weight: 700;
+    letter-spacing: 0.09em; padding: 4px 9px; border-radius: 20px;
+    border: 1px solid transparent; white-space: nowrap;
+  }
+  .pill.live { background: rgba(34,211,238,0.12); color: var(--accent-2); border-color: rgba(34,211,238,0.45); box-shadow: var(--glow-soft); }
+  .pill.down { background: rgba(244,63,94,0.12); color: var(--bad); border-color: rgba(244,63,94,0.4); }
+  .theme-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 8px; width: 30px; height: 30px; cursor: pointer;
+    font-size: 0.85rem; line-height: 1; flex: none;
+  }
 
-  /* steps */
-  ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: step; }
-  ol.steps li {
-    counter-increment: step;
-    position: relative;
-    padding-left: 2.2rem;
-    margin-bottom: 1rem;
+  /* panels */
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 17px; margin-bottom: 14px;
   }
-  ol.steps li::before {
-    content: counter(step);
-    position: absolute;
-    left: 0; top: 0;
-    width: 1.6rem; height: 1.6rem;
-    border-radius: 50%;
-    background: var(--accent);
-    color: white;
-    font-size: 0.85rem;
-    font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-  }
-  ol.steps li:last-child { margin-bottom: 0; }
+  .panel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+  .panel-head h2 { margin: 0; font-size: 1rem; flex: 1; }
+  .caps { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 8px; }
+  .hint { font-size: 0.81rem; color: var(--muted); margin: 0.5rem 0 0; }
+  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.78rem; }
 
-  a.button, button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 7px;
-    padding: 0.55rem 0.9rem;
-    font-size: 0.9rem;
-    text-decoration: none;
-    cursor: pointer;
-    font-family: inherit;
+  /* live status */
+  .status { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+  .stat { background: var(--inset); border: 1px solid var(--border-soft); border-radius: 10px; padding: 11px 12px; }
+  .stat.wide { grid-column: 1 / -1; }
+  .stat .k { display: block; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .stat .v { display: block; font-size: 0.95rem; font-weight: 650; margin-top: 2px; word-break: break-word; }
+  .v.on { color: var(--ok); }
+  .v.accent { color: var(--accent-2); }
+  .swatch-row { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
+  .swatch { width: 78px; height: 42px; border-radius: 9px; flex: none; border: 1px solid var(--border); }
+
+  /* chips (light pickers) */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+  .chip {
+    font-size: 0.8rem; padding: 6px 12px; border-radius: 20px; cursor: pointer;
+    background: var(--chip); border: 1px solid var(--chip-border); color: var(--muted);
+    user-select: none;
   }
-  button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--border); }
-  button.danger { background: transparent; color: var(--bad); border: 1px solid var(--bad); }
+  .chip.sel { background: rgba(168,85,247,0.17); border-color: var(--accent); color: var(--fg); box-shadow: var(--glow-soft); }
+
+  /* per-state cards */
+  .state { background: var(--inset); border: 1px solid var(--border-soft); border-radius: 11px; margin-bottom: 9px; }
+  .state-head { display: flex; align-items: center; gap: 10px; padding: 12px 13px; }
+  .state-head h3 { margin: 0; font-size: 0.9rem; flex: 1; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .tag {
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 3px 7px; border-radius: 5px;
+    background: rgba(34,211,238,0.13); color: var(--accent-2);
+    border: 1px solid rgba(34,211,238,0.3);
+  }
+  .state-body { padding: 0 13px 13px; display: flex; flex-direction: column; gap: 10px; }
+  .state-body.disabled { opacity: 0.38; pointer-events: none; }
+  .ctrl { display: flex; align-items: center; gap: 11px; }
+  .ctrl .k { width: 76px; flex: none; font-size: 0.8rem; color: var(--muted); }
+  .ctrl .val { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.75rem; color: var(--muted); width: 3rem; text-align: right; }
+
+  select, input[type="text"] {
+    flex: 1; min-width: 0; background: var(--inset); color: var(--fg);
+    border: 1px solid var(--chip-border); border-radius: 7px;
+    padding: 7px 10px; font-family: inherit; font-size: 0.84rem;
+  }
+  input[type="color"] {
+    width: 42px; height: 28px; padding: 2px; cursor: pointer;
+    background: var(--inset); border: 1px solid var(--chip-border); border-radius: 6px;
+  }
+  input[type="range"] {
+    flex: 1; min-width: 0; -webkit-appearance: none; appearance: none;
+    height: 5px; border-radius: 3px; background: var(--border-soft); outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 15px; height: 15px; border-radius: 50%; cursor: pointer;
+    background: #fff; box-shadow: 0 0 8px rgba(168,85,247,0.8), 0 0 0 1px var(--accent);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 15px; height: 15px; border: none; border-radius: 50%; cursor: pointer;
+    background: #fff; box-shadow: 0 0 8px rgba(168,85,247,0.8), 0 0 0 1px var(--accent);
+  }
+
+  button {
+    font-family: inherit; font-size: 0.84rem; padding: 8px 15px;
+    border-radius: 8px; border: none; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), #7c3aed);
+    color: #fff; box-shadow: var(--glow);
+  }
+  button.secondary { background: transparent; border: 1px solid var(--chip-border); color: var(--muted); box-shadow: none; }
+  button.danger { background: transparent; border: 1px solid var(--bad); color: var(--bad); box-shadow: none; }
+  button.tiny { font-size: 0.75rem; padding: 6px 11px; }
   button:disabled { opacity: 0.5; cursor: default; }
+  .btn-row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
 
-  .input-row { display: flex; gap: 0.5rem; margin: 0.75rem 0; }
-  input[type=text] {
-    flex: 1;
-    min-width: 0;
-    font-family: monospace;
-    font-size: 0.85rem;
-    padding: 0.55rem 0.6rem;
-    border-radius: 7px;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--fg);
+  /* toggle switch */
+  .toggle { position: relative; width: 36px; height: 20px; flex: none; }
+  .toggle.sm { width: 31px; height: 17px; }
+  .toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .track { position: absolute; inset: 0; border-radius: 20px; background: var(--border-soft); transition: 0.15s; cursor: pointer; }
+  .track::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: 0.15s;
   }
-  #message { margin-top: 0.6rem; font-size: 0.87rem; min-height: 1.2em; }
-  #message.error { color: var(--bad); }
-  #message.success { color: var(--ok); }
-  code { background: var(--card); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
-  .hint { font-size: 0.82rem; color: var(--muted); margin-top: 0.5rem; }
-  .color-bar {
-    height: 34px;
-    border-radius: 7px;
-    margin-top: 0.75rem;
-    border: 1px solid var(--border);
+  .toggle.sm .track::after { width: 13px; height: 13px; }
+  .toggle input:checked + .track { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+  .toggle input:checked + .track::after { background: #fff; transform: translateX(16px); }
+  .toggle.sm input:checked + .track::after { transform: translateX(14px); }
+  .switch { display: flex; align-items: center; gap: 8px; font-size: 0.84rem; }
+
+  /* setup steps */
+  ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: step; }
+  ol.steps li { counter-increment: step; position: relative; padding-left: 2.1rem; margin-bottom: 0.9rem; font-size: 0.87rem; }
+  ol.steps li:last-child { margin-bottom: 0; }
+  ol.steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 0;
+    width: 1.55rem; height: 1.55rem; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.78rem; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, var(--accent), #7c3aed);
   }
-  .color-label {
-    font-size: 0.78rem;
-    color: var(--muted);
-    margin: 0.35rem 0 0;
-    display: flex;
-    justify-content: space-between;
-  }
-  .mono { font-family: monospace; }
+  a.button { display: inline-block; text-decoration: none; }
+  code { background: var(--chip); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
   pre {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 0.7rem;
-    font-size: 0.78rem;
-    overflow-x: auto;
-    max-height: 320px;
-    margin-top: 0.75rem;
+    background: var(--inset); border: 1px solid var(--border-soft); border-radius: 8px;
+    padding: 0.7rem; font-size: 0.75rem; overflow-x: auto; max-height: 300px; margin-top: 0.7rem;
   }
+  .note { font-size: 0.8rem; min-height: 1.1em; }
+  .note.ok { color: var(--ok); }
+  .note.err { color: var(--bad); }
 </style>
 </head>
 <body>
-  <h1>🎮 PS5 Bridge</h1>
-  <p class="subtitle" id="deviceIp">Loading...</p>
+<div class="wrap">
 
-  <div class="card">
-    <h2>Live status</h2>
-    <div class="status-grid">
-      <div class="status-cell">
-        <div class="label">Power</div>
-        <div class="value" id="powerValue">–</div>
-      </div>
-      <div class="status-cell">
-        <div class="label">State</div>
-        <div class="value" id="stateValue">–</div>
-      </div>
-      <div class="status-cell">
-        <div class="label">Activity</div>
-        <div class="value" id="activityValue">–</div>
+  <header class="hdr">
+    <div class="logo">PS</div>
+    <div>
+      <h1>PS5 Bridge</h1>
+      <p class="sub" id="sub">connecting&hellip;</p>
+    </div>
+    <span class="pill down" id="livePill">OFFLINE</span>
+    <button class="theme-btn" id="themeBtn" title="Switch theme">◐</button>
+  </header>
+
+  <!-- live status -->
+  <section class="panel">
+    <div class="status">
+      <div class="stat"><span class="k">Power</span><span class="v" id="vPower">–</span></div>
+      <div class="stat"><span class="k">State</span><span class="v accent" id="vState">–</span></div>
+      <div class="stat wide"><span class="k">Now playing</span><span class="v" id="vActivity">–</span></div>
+      <div class="swatch-row" id="colorRow" style="display:none;">
+        <div class="swatch" id="colorSwatch"></div>
+        <div>
+          <span class="k" style="font-size:0.66rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">Game colour</span><br>
+          <span class="mono" id="colorHex"></span>
+        </div>
       </div>
     </div>
-    <div id="colorRow" style="display:none;">
-      <div class="color-bar" id="colorBar"></div>
-      <p class="color-label">Game colour <span class="mono" id="colorHex"></span></p>
+  </section>
+
+  <!-- lighting -->
+  <section class="panel" id="lightingCard" style="display:none;">
+    <div class="panel-head">
+      <h2>Lighting</h2>
+      <label class="toggle"><input type="checkbox" id="lightingEnabled"><span class="track"></span></label>
     </div>
-    <p class="hint">Power detection works right now with no setup. State/Activity fill in once you connect your account below.</p>
-  </div>
+    <p class="hint" style="margin-top:-6px;margin-bottom:14px;">
+      Drive your lights from the PS5's state — no automations needed.
+    </p>
 
-  <div class="card">
-    <div class="pill"><span id="statusDot" class="dot idle"></span><span id="statusText">Checking...</span></div>
-  </div>
+    <div id="lightingBody">
+      <p class="caps">Lights to control</p>
+      <div class="chips" id="lightsList"></div>
 
-  <div class="card" id="pairCard">
-    <h2>Connect your PSN account</h2>
-    <p class="hint" style="margin-top:-0.4rem;">One-time. Unlocks knowing what you're playing, not just on/off.</p>
+      <div class="switch" style="margin-bottom:14px;">
+        <label class="toggle sm"><input type="checkbox" id="restoreOnOff"><span class="track"></span></label>
+        <span>Restore previous lighting when the PS5 turns off</span>
+      </div>
+
+      <div id="stateBlocks"></div>
+
+      <div class="btn-row">
+        <button id="saveLighting">Save</button>
+        <span class="note" id="saveNote"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PSN pairing -->
+  <section class="panel" id="pairCard" style="display:none;">
+    <div class="panel-head"><h2>Connect your PSN account</h2></div>
+    <p class="hint" style="margin-top:-6px;margin-bottom:14px;">
+      One-time. Unlocks knowing <em>what</em> you're playing, not just on/off.
+    </p>
     <ol class="steps">
       <li>Make sure you're logged into <strong>playstation.com</strong> in a browser on this device.</li>
       <li><a class="button" href="https://ca.account.sony.com/api/v1/ssocookie" target="_blank" rel="noopener">Open my login code →</a></li>
-      <li>Select all the text on that page (it looks like <code>{"npsso":"..."}</code>) and copy it — the whole thing, no need to trim it.</li>
+      <li>Copy everything on that page — it looks like <code>{"npsso":"..."}</code>.</li>
       <li>
         Paste it below.
-        <div class="input-row">
-          <input type="text" id="npssoInput" placeholder="Paste here — full JSON or just the code, either works">
-          <button class="secondary" id="pasteButton" title="Paste from clipboard">📋 Paste</button>
+        <div class="btn-row">
+          <input type="text" id="npssoInput" placeholder="Paste the whole thing, or just the code">
+          <button class="secondary tiny" id="pasteButton">Paste</button>
         </div>
-        <button id="pairButton">Connect</button>
+        <div class="btn-row">
+          <button id="pairButton">Connect</button>
+          <span class="note" id="pairNote"></span>
+        </div>
       </li>
     </ol>
-    <div id="message"></div>
-  </div>
+  </section>
 
-  <div class="card" id="diagCard" style="display:none;">
-    <h2>Diagnostics</h2>
-    <p class="hint" style="margin-top:-0.4rem;">
-      Shows exactly what Sony's presence API returns. If the state seems stuck
-      (e.g. always "home" while a game is running), check whether
-      <code>gameTitleInfoList</code> below is empty &mdash; if it is, Sony is
-      withholding the game info, usually because of the console's
-      <em>Online Status and Now Playing</em> privacy setting.
-    </p>
-    <button class="secondary" id="rawButton">Fetch raw presence</button>
+  <!-- connected + diagnostics -->
+  <section class="panel" id="pairedCard" style="display:none;">
+    <div class="panel-head"><h2>PSN account</h2><span class="tag" id="onlineIdTag"></span></div>
+    <p class="hint" style="margin-top:-6px;">Game and activity data is flowing.</p>
+    <div class="btn-row">
+      <button class="secondary tiny" id="rawButton">Show raw presence</button>
+      <button class="danger tiny" id="unpairButton">Disconnect</button>
+    </div>
     <pre id="rawOutput" style="display:none;"></pre>
-  </div>
+    <p class="hint" id="rawHint" style="display:none;">
+      If <code>gameTitleInfoList</code> is empty while a game is running, Sony is
+      withholding it — check <em>Online Status and Now Playing</em> in the console's
+      privacy settings.
+    </p>
+  </section>
 
-  <div class="card" id="pairedCard" style="display:none;">
-    <h2>✅ Connected<span id="onlineIdText"></span></h2>
-    <p class="hint">Game/activity data is flowing to Home Assistant.</p>
-    <button class="danger" id="unpairButton">Disconnect account</button>
-  </div>
+</div>
 
-  <script>
-    const el = (id) => document.getElementById(id);
+<script>
+  const el = (id) => document.getElementById(id);
 
-    function extractNpsso(raw) {
-      const trimmed = raw.trim();
-      // Accept a full pasted JSON blob, or just the bare code.
-      const match = trimmed.match(/"npsso"\s*:\s*"([^"]+)"/);
-      if (match) return match[1];
-      return trimmed.replace(/[{}"]/g, "").replace(/^npsso\s*:\s*/, "").trim();
+  // ---------------------------------------------------------------- theme
+  // Ingress gives us no way to read Home Assistant's theme directly, so we
+  // follow the browser's colour-scheme preference (which tracks HA's dark
+  // mode in the common case) and let the button override it.
+  const savedTheme = (() => { try { return localStorage.getItem("ps5bridge-theme"); } catch { return null; } })();
+  if (savedTheme === "dark" || savedTheme === "light") {
+    document.documentElement.setAttribute("data-theme", savedTheme);
+  }
+  el("themeBtn").addEventListener("click", () => {
+    const root = document.documentElement;
+    const current = root.getAttribute("data-theme");
+    const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+    const effective = current || (prefersLight ? "light" : "dark");
+    const next = effective === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("ps5bridge-theme", next); } catch {}
+  });
+
+  // ------------------------------------------------------------- status
+  const PRETTY = { off: "Off", booting: "Booting", home: "Home screen", playing: "Playing", awake: "Awake" };
+
+  async function refreshStatus() {
+    try {
+      const data = await (await fetch("api/status")).json();
+
+      el("livePill").textContent = "LIVE";
+      el("livePill").className = "pill live";
+      el("sub").textContent = data.ps5Ip
+        ? data.ps5Ip + (data.onlineId ? " · " + data.onlineId : "")
+        : "";
+
+      el("vPower").textContent =
+        data.power === "AWAKE" ? "On" : data.power === "STANDBY" ? "Standby" : "Unknown";
+      el("vPower").className = "v" + (data.power === "AWAKE" ? " on" : "");
+      el("vState").textContent = PRETTY[data.derivedState] || data.derivedState || "–";
+      el("vActivity").textContent = data.activity && data.activity !== "none" ? data.activity : "–";
+
+      if (data.gameColor) {
+        el("colorRow").style.display = "flex";
+        el("colorSwatch").style.background = data.gameColor;
+        el("colorHex").textContent = data.gameColor;
+      } else {
+        el("colorRow").style.display = "none";
+      }
+
+      el("pairCard").style.display = data.paired ? "none" : "block";
+      el("pairedCard").style.display = data.paired ? "block" : "none";
+      el("onlineIdTag").textContent = data.onlineId || "connected";
+    } catch (e) {
+      el("livePill").textContent = "OFFLINE";
+      el("livePill").className = "pill down";
     }
+  }
 
-    async function refreshStatus() {
-      try {
-        const res = await fetch("api/status");
-        const data = await res.json();
+  // ------------------------------------------------------------ pairing
+  function extractNpsso(raw) {
+    const t = (raw || "").trim();
+    const m = t.match(/"npsso"\s*:\s*"([^"]+)"/);
+    if (m) return m[1];
+    return t.replace(/[{}"]/g, "").replace(/^npsso\s*:\s*/, "").trim();
+  }
 
-        el("powerValue").textContent = data.power === "AWAKE" ? "On" : data.power === "STANDBY" ? "Standby" : "Unknown";
-        el("stateValue").textContent = data.derivedState || "–";
-        el("activityValue").textContent = data.activity || "–";
-        el("deviceIp").textContent = data.ps5Ip ? "Watching " + data.ps5Ip : "";
-
-        // Show the sampled game colour, so it's obvious at a glance whether
-        // the cover-art sampling is actually working.
-        if (data.gameColor) {
-          el("colorRow").style.display = "block";
-          el("colorBar").style.background = data.gameColor;
-          el("colorHex").textContent = data.gameColor;
-        } else {
-          el("colorRow").style.display = "none";
-        }
-
-        if (data.paired) {
-          el("statusDot").className = "dot ok";
-          el("statusText").textContent = "Connected to PSN";
-          el("pairCard").style.display = "none";
-          el("pairedCard").style.display = "block";
-          el("diagCard").style.display = "block";
-          el("onlineIdText").textContent = data.onlineId ? " as " + data.onlineId : "";
-        } else {
-          el("statusDot").className = "dot bad";
-          el("statusText").textContent = "Not connected to PSN (power on/off still works without it)";
-          el("pairCard").style.display = "block";
-          el("pairedCard").style.display = "none";
-          el("diagCard").style.display = "none";
-        }
-      } catch (e) {
-        el("statusText").textContent = "Could not reach the add-on";
-      }
+  el("pasteButton").addEventListener("click", async () => {
+    try {
+      el("npssoInput").value = await navigator.clipboard.readText();
+    } catch {
+      el("pairNote").className = "note err";
+      el("pairNote").textContent = "Couldn't read clipboard — paste manually.";
     }
+  });
 
-    el("pasteButton").addEventListener("click", async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        el("npssoInput").value = text;
-      } catch (e) {
-        el("message").className = "error";
-        el("message").textContent = "Couldn't read clipboard automatically — paste manually with Ctrl/Cmd+V.";
-      }
-    });
-
-    el("pairButton").addEventListener("click", async () => {
-      const message = el("message");
-      message.className = "";
-      message.textContent = "";
-
-      const npsso = extractNpsso(el("npssoInput").value);
-      if (!npsso) {
-        message.className = "error";
-        message.textContent = "Paste your login code first.";
-        return;
-      }
-
-      const btn = el("pairButton");
-      btn.disabled = true;
-      btn.textContent = "Connecting...";
-      try {
-        const res = await fetch("api/pair", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ npsso }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to connect");
-        message.className = "success";
-        message.textContent = "Connected as " + (data.onlineId || "your account") + "!";
-        await refreshStatus();
-      } catch (e) {
-        message.className = "error";
-        message.textContent = e.message;
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Connect";
-      }
-    });
-
-    el("rawButton").addEventListener("click", async () => {
-      const out = el("rawOutput");
-      const btn = el("rawButton");
-      btn.disabled = true;
-      btn.textContent = "Fetching...";
-      out.style.display = "block";
-      out.textContent = "Loading...";
-      try {
-        const res = await fetch("api/presence-raw");
-        const data = await res.json();
-        out.textContent = JSON.stringify(data, null, 2);
-      } catch (e) {
-        out.textContent = "Failed: " + e.message;
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Fetch raw presence";
-      }
-    });
-
-    el("unpairButton").addEventListener("click", async () => {
-      await fetch("api/unpair", { method: "POST" });
+  el("pairButton").addEventListener("click", async () => {
+    const note = el("pairNote");
+    const npsso = extractNpsso(el("npssoInput").value);
+    note.className = "note";
+    if (!npsso) { note.className = "note err"; note.textContent = "Paste your code first."; return; }
+    const btn = el("pairButton");
+    btn.disabled = true; btn.textContent = "Connecting…"; note.textContent = "";
+    try {
+      const res = await fetch("api/pair", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ npsso }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to connect");
+      note.className = "note ok";
+      note.textContent = "Connected as " + (data.onlineId || "your account");
       await refreshStatus();
-    });
+    } catch (e) {
+      note.className = "note err"; note.textContent = e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = "Connect";
+    }
+  });
 
-    refreshStatus();
-    setInterval(refreshStatus, 5000);
-  </script>
+  el("unpairButton").addEventListener("click", async () => {
+    await fetch("api/unpair", { method: "POST" });
+    await refreshStatus();
+  });
+
+  el("rawButton").addEventListener("click", async () => {
+    const out = el("rawOutput"), btn = el("rawButton");
+    btn.disabled = true; btn.textContent = "Fetching…";
+    out.style.display = "block"; out.textContent = "Loading…";
+    el("rawHint").style.display = "block";
+    try {
+      const data = await (await fetch("api/presence-raw")).json();
+      out.textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      out.textContent = "Failed: " + e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = "Show raw presence";
+    }
+  });
+
+  // ----------------------------------------------------------- lighting
+  const STATES = [
+    ["home", "Home screen", "#ffc18d"],
+    ["playing", "Playing a game", "#f43f5e"],
+    ["booting", "Booting up", "#a855f7"],
+    ["off", "Turned off", "#5b4a86"],
+  ];
+  let lighting = null;
+  let availableLights = [];
+
+  const esc = (v) => String(v).replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // Effects are device-specific, so they come from the first selected light.
+  // A union across mismatched lights would offer effects some can't run.
+  function currentEffects() {
+    const first = availableLights.find((l) => lighting.lights.includes(l.entity_id));
+    return first ? first.effects : [];
+  }
+
+  function effectOptions(selected) {
+    return ['<option value="">(none)</option>']
+      .concat(currentEffects().map((e) =>
+        '<option value="' + esc(e) + '"' + (selected === e ? " selected" : "") + ">" + esc(e) + "</option>"))
+      .join("");
+  }
+
+  function stateBlock(key, label, dotColor) {
+    const c = lighting.states[key];
+    const isOff = key === "off";
+    const tags = [];
+    if (!isOff && c.useGameColor) tags.push("game colour");
+    if (isOff && lighting.restoreOnOff) tags.push("restore");
+
+    const body = isOff
+      ? '<div class="switch"><label class="toggle sm"><input type="checkbox" data-state="off" data-field="turnOff"' +
+          (c.turnOff !== false ? " checked" : "") + '><span class="track"></span></label>' +
+          "<span>Turn lights off when there's no snapshot to restore</span></div>"
+      : '<div class="ctrl"><span class="k">Effect</span>' +
+          '<select data-state="' + key + '" data-field="effect">' + effectOptions(c.effect) + "</select></div>" +
+        '<div class="ctrl"><span class="k">Colour</span>' +
+          '<input type="color" data-state="' + key + '" data-field="color" value="' + esc(c.color || "#ffffff") + '"' +
+          (c.useGameColor ? " disabled" : "") + ">" +
+          '<span class="switch" style="margin-left:2px;"><label class="toggle sm"><input type="checkbox" data-state="' + key +
+          '" data-field="useGameColor"' + (c.useGameColor ? " checked" : "") + '><span class="track"></span></label>' +
+          "<span>use game colour</span></span></div>" +
+        '<div class="ctrl"><span class="k">Brightness</span>' +
+          '<input type="range" min="1" max="255" value="' + c.brightness + '" data-state="' + key + '" data-field="brightness">' +
+          '<span class="val">' + Math.round((c.brightness / 255) * 100) + "%</span></div>" +
+        '<div class="ctrl"><span class="k">Speed</span>' +
+          '<input type="range" min="0" max="255" value="' + (c.speed == null ? 128 : c.speed) + '" data-state="' + key + '" data-field="speed">' +
+          '<span class="val">' + (c.speed == null ? 128 : c.speed) + "</span></div>";
+
+    return '<div class="state">' +
+      '<div class="state-head">' +
+        '<span class="dot" style="background:' + dotColor + ';box-shadow:0 0 8px ' + dotColor + '"></span>' +
+        "<h3>" + esc(label) + "</h3>" +
+        tags.map((t) => '<span class="tag">' + t + "</span>").join("") +
+        '<label class="toggle sm"><input type="checkbox" data-state="' + key + '" data-field="enabled"' +
+          (c.enabled ? " checked" : "") + '><span class="track"></span></label>' +
+      "</div>" +
+      '<div class="state-body' + (c.enabled ? "" : " disabled") + '" data-body="' + key + '">' +
+        body +
+        '<div class="ctrl"><span class="k">Fade</span>' +
+          '<input type="range" min="0" max="10" value="' + (c.transition == null ? 2 : c.transition) + '" data-state="' + key + '" data-field="transition">' +
+          '<span class="val">' + (c.transition == null ? 2 : c.transition) + "s</span></div>" +
+        '<div><button class="secondary tiny" data-preview="' + key + '">Try it now</button></div>' +
+      "</div></div>";
+  }
+
+  function renderLights() {
+    el("lightsList").innerHTML = availableLights.length
+      ? availableLights.map((l) =>
+          '<span class="chip' + (lighting.lights.includes(l.entity_id) ? " sel" : "") +
+          '" data-light="' + esc(l.entity_id) + '">' + esc(l.name) + "</span>").join("")
+      : '<span class="hint">No lights found in Home Assistant.</span>';
+  }
+
+  function renderStates() {
+    el("stateBlocks").innerHTML = STATES.map((s) => stateBlock(s[0], s[1], s[2])).join("");
+  }
+
+  function applyEnabledLook() {
+    const on = !!lighting.enabled;
+    el("lightingBody").style.opacity = on ? "1" : "0.4";
+    el("lightingBody").style.pointerEvents = on ? "auto" : "none";
+  }
+
+  function readForm() {
+    lighting.enabled = el("lightingEnabled").checked;
+    lighting.restoreOnOff = el("restoreOnOff").checked;
+    for (const input of document.querySelectorAll("[data-state][data-field]")) {
+      const { state, field } = input.dataset;
+      let value;
+      if (input.type === "checkbox") value = input.checked;
+      else if (input.type === "range") value = Number(input.value);
+      else value = input.value || null;
+      lighting.states[state][field] = value;
+    }
+    return lighting;
+  }
+
+  async function saveLighting() {
+    const res = await fetch("api/lighting", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(lighting),
+    });
+    if (!res.ok) throw new Error("Save failed");
+  }
+
+  async function loadLighting() {
+    try {
+      const cfg = await (await fetch("api/lighting")).json();
+      const lightsRes = await fetch("api/lights");
+      lighting = cfg;
+      availableLights = lightsRes.ok ? await lightsRes.json() : [];
+      if (!Array.isArray(availableLights)) availableLights = [];
+      el("lightingEnabled").checked = !!lighting.enabled;
+      el("restoreOnOff").checked = !!lighting.restoreOnOff;
+      applyEnabledLook();
+      renderLights();
+      renderStates();
+      el("lightingCard").style.display = "block";
+    } catch (e) {
+      // Lighting needs Home Assistant's API; if it's unreachable the rest of
+      // the panel still works, so just leave this card hidden.
+      console.warn("lighting unavailable", e);
+    }
+  }
+
+  // Light selection changes which effects are offered, but re-rendering the
+  // whole card on every input would destroy the element being interacted
+  // with. Only the effect dropdowns are rebuilt.
+  function refreshEffectOptions() {
+    for (const sel of document.querySelectorAll('select[data-field="effect"]')) {
+      const key = sel.dataset.state;
+      sel.innerHTML = effectOptions(lighting.states[key].effect);
+    }
+  }
+
+  el("lightsList").addEventListener("click", (ev) => {
+    const chip = ev.target.closest("[data-light]");
+    if (!chip || !lighting) return;
+    const id = chip.dataset.light;
+    const i = lighting.lights.indexOf(id);
+    if (i === -1) lighting.lights.push(id); else lighting.lights.splice(i, 1);
+    chip.classList.toggle("sel");
+    refreshEffectOptions();
+  });
+
+  el("lightingEnabled").addEventListener("change", () => {
+    if (!lighting) return;
+    lighting.enabled = el("lightingEnabled").checked;
+    applyEnabledLook();
+  });
+
+  el("restoreOnOff").addEventListener("change", () => {
+    if (!lighting) return;
+    lighting.restoreOnOff = el("restoreOnOff").checked;
+    renderStates(); // the 'restore' tag on the off card depends on this
+  });
+
+  document.addEventListener("input", (ev) => {
+    const t = ev.target;
+    if (!lighting || !t.dataset || !t.dataset.state) return;
+
+    if (t.type === "range") {
+      const val = t.parentElement.querySelector(".val");
+      if (val) {
+        if (t.dataset.field === "brightness") val.textContent = Math.round((t.value / 255) * 100) + "%";
+        else if (t.dataset.field === "transition") val.textContent = t.value + "s";
+        else val.textContent = t.value;
+      }
+    }
+    if (t.dataset.field === "enabled") {
+      const body = document.querySelector('[data-body="' + t.dataset.state + '"]');
+      if (body) body.classList.toggle("disabled", !t.checked);
+    }
+    if (t.dataset.field === "useGameColor") {
+      const picker = document.querySelector('input[type=color][data-state="' + t.dataset.state + '"]');
+      if (picker) picker.disabled = t.checked;
+    }
+  });
+
+  document.addEventListener("click", async (ev) => {
+    const btn = ev.target.closest("[data-preview]");
+    if (!btn || !lighting) return;
+    const note = el("saveNote");
+    readForm();
+    note.className = "note"; note.textContent = "Applying…";
+    try {
+      await saveLighting();
+      const res = await fetch("api/lighting/preview", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state: btn.dataset.preview }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      note.className = "note ok"; note.textContent = "Applied.";
+    } catch (e) {
+      note.className = "note err"; note.textContent = e.message;
+    }
+  });
+
+  el("saveLighting").addEventListener("click", async () => {
+    if (!lighting) return;
+    const note = el("saveNote");
+    readForm();
+    note.className = "note"; note.textContent = "Saving…";
+    try {
+      await saveLighting();
+      note.className = "note ok"; note.textContent = "Saved.";
+    } catch (e) {
+      note.className = "note err"; note.textContent = e.message;
+    }
+  });
+
+  refreshStatus();
+  loadLighting();
+  setInterval(refreshStatus, 5000);
+</script>
 </body>
 </html>

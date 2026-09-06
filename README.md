@@ -69,6 +69,17 @@ powered off for 2+ months straight, or if you change your PSN password
 sensor turns on and the setup panel shows "Not connected" again — just
 redo the same copy-paste.
 
+## Lighting without automations
+
+The add-on's panel can drive your lights itself: pick which lights to
+control, then set effect, colour, brightness, speed and fade for each PS5
+state, with a "Try it now" button to test each one. Colours can be fixed or
+taken from the running game's cover art, and it can snapshot your lights when
+a session starts and restore them when it ends.
+
+If you'd rather write automations, leave that switched off -- the add-on
+won't touch your lights, and the sensors behave exactly as before.
+
 ## Automation ideas
 
 - Trigger on `sensor.<name>_state` changing to `home` → dim white light

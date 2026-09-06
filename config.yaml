@@ -1,5 +1,5 @@
 name: "PS5 to MQTT Bridge"
-version: "2.4.1"
+version: "2.5.0"
 slug: "ps5_mqtt_bridge"
 description: "Polls a PS5's power state over the LAN, plus PSN presence (current game / home screen), and publishes it all to MQTT for Home Assistant automations."
 arch:
@@ -12,6 +12,9 @@ init: false
 startup: services
 boot: auto
 ingress: true
+# lets the add-on call HA services directly, so lighting can be configured
+# in the panel instead of hand-written automations
+homeassistant_api: true
 ingress_port: 8099
 panel_icon: mdi:sony-playstation
 panel_title: "PS5 Bridge"

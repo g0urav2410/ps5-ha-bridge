@@ -1,5 +1,37 @@
 # Changelog
 
+## 2.5.0
+
+- **Lighting can now be configured in the add-on's panel**, instead of by
+  hand-writing automations. Pick which lights to drive, then set effect,
+  colour, brightness, effect speed and fade per PS5 state, with a "Try it
+  now" button to test without waiting for the console to change state. The
+  snapshot-and-restore behaviour (put the lights back how they were when the
+  session ends) is a checkbox. This needs the new `homeassistant_api`
+  permission so the add-on can call HA services directly.
+
+  The YAML automation still works and is still supported -- if you prefer it,
+  just leave built-in lighting switched off.
+
+- **Redesigned the panel.** Live status, per-state cards with toggles, and a
+  colour swatch, in a dark neon theme that follows the browser's light/dark
+  preference (with a manual override button, since Ingress gives no way to
+  read Home Assistant's own theme).
+
+- **Better colour picking on dark cover art.** Dark covers were collapsing to
+  washed-out grey -- Demon's Souls resolved to `#567181`, a flat slate that
+  looked nothing like the game. Output saturation now has a floor, and
+  lightness tracks the art instead of being pinned mid-range.
+
+  The obvious alternative -- scoring hue families by vividness rather than
+  size -- was tried and rejected: it fixed dark covers but pushed muted ones
+  to neon (The Last of Us went from a faithful olive to `#00ff24`). Family
+  selection stays size-weighted; only the final saturation is lifted.
+
+- Fixed the lighting form rebuilding itself on every keystroke, which
+  discarded the control being interacted with -- selecting a light did
+  nothing as a result.
+
 ## 2.4.1
 
 - The add-on's panel now shows the sampled game colour as a swatch beside

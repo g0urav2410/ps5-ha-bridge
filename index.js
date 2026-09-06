@@ -7,6 +7,7 @@ const { startServer } = require("./lib/server");
 const sharedState = require("./lib/state");
 const { log, logError, logState, resetStateLog } = require("./lib/logger");
 const { GameColors } = require("./lib/gamecolor");
+const { Lighting } = require("./lib/lighting");
 
 const options = JSON.parse(fs.readFileSync("/data/options.json", "utf8"));
 
@@ -50,9 +51,10 @@ const TOPICS = {
 };
 
 const gameColors = new GameColors();
+const lighting = new Lighting();
 
 const psn = new PsnClient();
-startServer(psn, options.ingress_port || 8099, PS5_IP);
+startServer(psn, options.ingress_port || 8099, PS5_IP, lighting);
 
 const client = mqtt.connect(`mqtt://${MQTT_HOST}:${MQTT_PORT}`, {
   username: MQTT_USER,
@@ -152,6 +154,9 @@ let lastPresenceAt = 0;
 // console changed state.
 let lastGoodDerived = null;
 let lastGoodActivity = null;
+// Last state we drove the lights for, so built-in lighting fires on real
+// transitions only.
+let lastDerivedState = null;
 
 async function loop() {
   for (;;) {
@@ -201,6 +206,11 @@ async function tick() {
         activity: "none",
         gameColor: null,
       });
+      if (lastDerivedState !== "off") {
+        const from = lastDerivedState;
+        lastDerivedState = "off";
+        lighting.onStateChange(from, "off", null);
+      }
       lastPower = "STANDBY";
       fastPollUntil = 0;
       lastPresence = null;
@@ -300,6 +310,14 @@ async function tick() {
     activity,
     gameColor: gameColor ? gameColor.hex : null,
   });
+
+  if (derivedState !== lastDerivedState) {
+    const from = lastDerivedState;
+    lastDerivedState = derivedState;
+    // deliberately not awaited: a slow or failing HA call shouldn't hold up
+    // the poll loop or delay the MQTT publish above
+    lighting.onStateChange(from, derivedState, gameColor);
+  }
 
   // logState() suppresses repeats, so a console sitting in one state
   // logs once instead of every poll.
