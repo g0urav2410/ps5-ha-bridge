@@ -141,3 +141,48 @@ actions:
                   entity_id: light.wled
                 data:
                   transition: 2
+
+# =============================================================================
+# PS5 Lighting Failsafe  (SEPARATE automation -- add this as its own entry)
+# =============================================================================
+# Covers the one failure the main automation can't: if the add-on stops while
+# you're mid-session (crash, add-on update, HA host reboot), its MQTT last-will
+# marks the entities 'unavailable'. The main automation only reacts to 'off',
+# so it never fires and the lights stay stuck in gaming mode indefinitely.
+#
+# The 5-minute delay is deliberate: it rides out brief restarts without
+# killing your lights, while still catching a genuine outage.
+# =============================================================================
+
+alias: PS5 Lighting Failsafe
+description: "Restore lights if the bridge disappears without ever reporting 'off'."
+mode: single
+
+triggers:
+  - trigger: state
+    entity_id: sensor.playstation_5_state
+    to: "unavailable"
+    for: "00:05:00"
+
+conditions: []
+
+actions:
+  - choose:
+      # Same restore logic as the main automation's 'off' branch.
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ states('scene.ps5_light_snapshot')
+                 not in ['unknown', 'unavailable'] }}
+        sequence:
+          - action: scene.turn_on
+            target:
+              entity_id: scene.ps5_light_snapshot
+            data:
+              transition: 2
+    default:
+      - action: light.turn_off
+        target:
+          entity_id: light.wled
+        data:
+          transition: 2

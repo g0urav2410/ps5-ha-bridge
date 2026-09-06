@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.3.2
+
+- Documented the automation example and added a failsafe automation to it,
+  for the case where the add-on stops mid-session and so never reports
+  `off` (leaving the lights stuck on).
+
 ## 2.3.1
 
 - The raw presence diagnostic is now a button in the add-on's panel rather

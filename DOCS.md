@@ -52,6 +52,30 @@ every couple of months. If it ever does need to be redone (e.g. you changed
 your PSN password), the `psn_connection_problem` sensor turns on and the
 panel shows "Not connected" again.
 
+## Automations
+
+A worked example, heavily commented, lives in the repo at
+`examples/ps5-lighting-automation.yaml`. It covers driving a WLED strip from
+the state sensor and restoring the previous lighting afterwards.
+
+### Failsafe
+
+One failure mode is worth guarding against: if this add-on stops while a
+session is in progress (crash, add-on update, host reboot), its MQTT
+last-will marks the entities `unavailable`. An automation triggering on
+`to: "off"` will never fire, so whatever lighting was active stays on
+indefinitely.
+
+The example file includes a second, separate `PS5 Lighting Failsafe`
+automation for this: it triggers on the state being `unavailable` for 5
+minutes, then restores the lights. The delay lets brief restarts pass
+without disturbing anything.
+
+Whether you need it is a judgement call -- add-ons with the watchdog enabled
+usually restart within seconds, well inside the 5-minute window. It matters
+if lights being stuck on overnight would bother you; skip it if you'd rather
+just flip them off by hand on the rare occasion.
+
 ## Known limits
 
 - This relies on Sony's local discovery protocol and the same presence API

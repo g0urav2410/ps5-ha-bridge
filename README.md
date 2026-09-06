@@ -74,6 +74,10 @@ redo the same copy-paste.
 - Trigger on `binary_sensor.<name>_psn_auth` turning on → a persistent
   notification reminding you to re-open the setup panel
 
+A complete, commented example — including a failsafe for the case where the
+add-on stops mid-session and never gets to report `off` — is in
+[`examples/ps5-lighting-automation.yaml`](examples/ps5-lighting-automation.yaml).
+
 ## Notes / honesty about limits
 
 - This is all built on **unofficial, reverse-engineered protocols** (the
