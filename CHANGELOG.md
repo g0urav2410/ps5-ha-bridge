@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.11.0
+
+- **Settings now save as you change them.** Nothing persisted until Save was
+  pressed, so a toggle would silently revert whenever the panel was
+  reopened -- which read as the toggles simply not working. They did work;
+  the change just never reached the server. The Save button is gone, since
+  there's nothing left for it to do.
+- **Focusing the effect field no longer filters the list to what's already
+  in it.** An effect already chosen meant reopening the list showed only
+  that one entry, hiding the other ~180. Focus now shows everything and
+  typing filters.
+- **"Use game colour" is only offered on "Playing a game."** The other
+  states have no game running, so there was no cover art for it to sample
+  and the option did nothing.
+- Softened the card glow -- smaller, less blur, lower opacity -- so the
+  cards sit together rather than each shouting its colour.
+
 ## 2.10.2
 
 - Fixed the effect list being invisible. It always opened downward with a

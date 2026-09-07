@@ -156,23 +156,23 @@
     background: var(--panel);
     border: 1px solid var(--border-soft);
     border-radius: 11px;
-    margin-bottom: 20px;
+    margin-bottom: 13px;
     position: relative;
     transition: border-color 0.3s;
   }
   .state-glow {
     position: absolute;
-    inset: -13px;
+    inset: -6px;
     z-index: -1;
     pointer-events: none;
-    border-radius: 18px;
+    border-radius: 15px;
     background: var(--state-color, transparent);
-    filter: blur(9px);
+    filter: blur(7px);
     opacity: 0;
     transition: opacity 0.35s, background 0.35s;
   }
-  .state.lit .state-glow { opacity: 0.9; }
-  .state.lit { border-color: color-mix(in srgb, var(--state-color) 40%, var(--border-soft)); }
+  .state.lit .state-glow { opacity: 0.5; }
+  .state.lit { border-color: color-mix(in srgb, var(--state-color) 22%, var(--border-soft)); }
   .swatch-inline {
     width: 13px; height: 13px; border-radius: 3px; display: inline-block;
     vertical-align: -2px; border: 1px solid var(--border-soft); margin: 0 3px;
@@ -374,8 +374,7 @@
       <div id="stateBlocks" style="padding:4px 2px; isolation: isolate;"></div>
 
       <div class="btn-row">
-        <button id="saveLighting">Save</button>
-        <span class="note" id="saveNote"></span>
+        <span class="note" id="saveNote">Changes save automatically.</span>
       </div>
     </div>
   </section>
@@ -554,6 +553,9 @@
   let lighting = null;
   let availableLights = [];
   let currentGameColor = null;
+  // null means "not filtering" -- an already-chosen effect shouldn't filter
+  // the list down to itself the moment the field is focused.
+  const fxFilter = {};
 
   const esc = (v) => String(v).replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -570,7 +572,7 @@
     const list = document.querySelector('[data-fxlist="' + key + '"]');
     const input = document.querySelector('input[data-state="' + key + '"][data-field="effect"]');
     if (!list || !input) return;
-    const q = (input.value || "").trim().toLowerCase();
+    const q = (fxFilter[key] || "").trim().toLowerCase();
     const all = currentEffects();
     const matches = q ? all.filter((e) => e.toLowerCase().includes(q)) : all;
 
@@ -588,8 +590,9 @@
         : '<p class="fx-empty">Nothing matches.</p>');
   }
 
-  function openFx(key) {
+  function openFx(key, keepFilter) {
     closeAllFx();
+    if (!keepFilter) fxFilter[key] = null;
     renderFxList(key);
     const list = document.querySelector('[data-fxlist="' + key + '"]');
     const input = document.querySelector('input[data-state="' + key + '"][data-field="effect"]');
@@ -614,8 +617,11 @@
   function stateBlock(key, label, dotColor) {
     const c = lighting.states[key];
     const isOff = key === "off";
+    // Only a running game has cover art to sample, so the option is
+    // meaningless anywhere else.
+    const canUseGameColor = key === "playing";
     const tags = [];
-    if (!isOff && c.useGameColor) tags.push("game colour");
+    if (canUseGameColor && c.useGameColor) tags.push("game colour");
     if (isOff && lighting.restoreOnOff) tags.push("restore");
 
     const body = isOff
@@ -628,11 +634,14 @@
               'placeholder="Click to browse, or type" value="' + esc(c.effect || "") + '">' +
             '<div class="fx-list" data-fxlist="' + key + '"></div>' +
           "</span></div>" +
-        '<div class="ctrl"><span class="k">' + (c.useGameColor ? "Fallback" : "Colour") + "</span>" +
+        '<div class="ctrl"><span class="k">' + (canUseGameColor && c.useGameColor ? "Fallback" : "Colour") + "</span>" +
           '<input type="color" data-state="' + key + '" data-field="color" value="' + esc(c.color || "#ffffff") + '">' +
-          '<span class="switch" style="margin-left:2px;"><label class="toggle sm"><input type="checkbox" data-state="' + key +
-          '" data-field="useGameColor"' + (c.useGameColor ? " checked" : "") + '><span class="track"></span></label>' +
-          "<span>use game colour</span></span></div>" +
+          (canUseGameColor
+            ? '<span class="switch" style="margin-left:2px;"><label class="toggle sm"><input type="checkbox" data-state="' + key +
+              '" data-field="useGameColor"' + (c.useGameColor ? " checked" : "") + '><span class="track"></span></label>' +
+              "<span>use game colour</span></span>"
+            : "") +
+          "</div>" +
         '<p class="colour-note" data-note="' + key + '"></p>' +
         '<div class="ctrl"><span class="k">Brightness</span>' +
           '<input type="range" min="1" max="255" value="' + c.brightness + '" data-state="' + key + '" data-field="brightness">' +
@@ -726,14 +735,15 @@
 
     const fallback = c.color || "#ffffff";
     // What the lights would actually be set to right now.
-    const color = c.useGameColor ? (currentGameColor || fallback) : fallback;
+    const useGame = key === "playing" && c.useGameColor;
+    const color = useGame ? (currentGameColor || fallback) : fallback;
     card.style.setProperty("--state-color", color);
     card.classList.toggle("lit", !!c.enabled);
 
     const note = card.querySelector('[data-note="' + key + '"]');
     if (note) {
       const chip = (hex) => '<span class="swatch-inline" style="background:' + hex + '"></span>';
-      if (!c.useGameColor) {
+      if (key !== "playing" || !c.useGameColor) {
         note.innerHTML = "Always " + chip(fallback) + "<code>" + fallback + "</code>.";
       } else if (currentGameColor) {
         note.innerHTML =
@@ -787,6 +797,33 @@
       body: JSON.stringify(lighting),
     });
     if (!res.ok) throw new Error("Save failed");
+  }
+
+  // Everything saves as it's changed. Requiring a Save press meant a toggle
+  // would silently revert on reload, which read as the toggle not working.
+  let saveTimer = null;
+  function queueSave(immediate) {
+    const note = el("saveNote");
+    clearTimeout(saveTimer);
+    const doSave = async () => {
+      try {
+        readForm();
+        await saveLighting();
+        note.className = "note ok";
+        note.textContent = "Saved.";
+        setTimeout(() => {
+          if (note.textContent === "Saved.") {
+            note.className = "note";
+            note.textContent = "Changes save automatically.";
+          }
+        }, 1600);
+      } catch (e) {
+        note.className = "note err";
+        note.textContent = e.message;
+      }
+    };
+    if (immediate) return doSave();
+    saveTimer = setTimeout(doSave, 400);
   }
 
   async function loadLighting() {
@@ -849,6 +886,7 @@
     if (i === -1) lighting.lights.push(id); else lighting.lights.splice(i, 1);
     chip.classList.toggle("sel");
     refreshEffectOptions();
+    queueSave();
     el("selCount").textContent = lighting.lights.length
       ? lighting.lights.length + " selected"
       : availableLights.length + " available";
@@ -870,6 +908,7 @@
       validateEffect(key);
       paintState(key);
       closeAllFx();
+      queueSave();
       return;
     }
     if (!ev.target.closest(".fx-wrap")) closeAllFx();
@@ -882,7 +921,7 @@
   for (const evt of ["scroll", "resize"]) {
     window.addEventListener(evt, () => {
       const open = document.querySelector(".fx-list.open");
-      if (open) openFx(open.dataset.fxlist);
+      if (open) openFx(open.dataset.fxlist, true);
     }, { passive: true });
   }
 
@@ -894,12 +933,14 @@
     if (!lighting) return;
     lighting.enabled = el("lightingEnabled").checked;
     applyEnabledLook();
+    queueSave();
   });
 
   el("restoreOnOff").addEventListener("change", () => {
     if (!lighting) return;
     lighting.restoreOnOff = el("restoreOnOff").checked;
     renderStates(); // the 'restore' tag on the off card depends on this
+    queueSave();
   });
 
   document.addEventListener("input", (ev) => {
@@ -941,8 +982,9 @@
     }
 
     if (t.dataset.field === "effect") {
+      fxFilter[t.dataset.state] = t.value; // now they're actually typing
       validateEffect(t.dataset.state);
-      openFx(t.dataset.state); // re-filter as they type
+      openFx(t.dataset.state, true);
     }
 
     // keep the card's preview honest as settings change
@@ -951,6 +993,7 @@
     else if (t.type === "range") c[t.dataset.field] = Number(t.value);
     else c[t.dataset.field] = t.value || null;
     paintState(t.dataset.state);
+    queueSave();
   });
 
   document.addEventListener("change", (ev) => {
@@ -959,6 +1002,7 @@
     if (t.type === "color" || t.dataset.field === "effect") {
       lighting.states[t.dataset.state][t.dataset.field] = t.value || null;
       paintState(t.dataset.state);
+      queueSave();
     }
   });
 
@@ -996,9 +1040,9 @@
       return;
     }
 
-    readForm();
     note.className = "note"; note.textContent = "Applying…";
     try {
+      readForm();
       await saveLighting();
       const res = await fetch("api/lighting/preview", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -1015,19 +1059,6 @@
       setTimeout(() => {
         if (previewingState === key) { previewingState = null; setPreviewButtons(); }
       }, 45000);
-    } catch (e) {
-      note.className = "note err"; note.textContent = e.message;
-    }
-  });
-
-  el("saveLighting").addEventListener("click", async () => {
-    if (!lighting) return;
-    const note = el("saveNote");
-    readForm();
-    note.className = "note"; note.textContent = "Saving…";
-    try {
-      await saveLighting();
-      note.className = "note ok"; note.textContent = "Saved.";
     } catch (e) {
       note.className = "note err"; note.textContent = e.message;
     }

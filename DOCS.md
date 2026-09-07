@@ -105,7 +105,7 @@ configure each state:
 | Setting | Notes |
 |---|---|
 | Effect | Typeahead over the light's own effect list. Leave blank for none. Only meaningful for lights that have effects (WLED does). |
-| Colour | A fixed colour, or **use game colour** to take it from the running game's cover art. |
+| Colour | A fixed colour. On **Playing a game** only, **use game colour** takes it from the running game's cover art instead, and the swatch becomes the fallback for games with no usable artwork. |
 | Brightness | 0-255. |
 | Effect speed | Only applied when a matching `number.<light>_speed` entity exists, which is how WLED exposes it. |
 | Fade | Transition time in seconds. |
@@ -119,13 +119,9 @@ Click the effect field to list everything the selected light supports, or
 type to filter. An effect the light doesn't have is flagged.
 
 While a preview is running, that state's "Try it now" becomes "Stop &
-restore". The simulations are approximations: WLED has around 180
-effects, so names are matched loosely to about a dozen behaviours, and
-anything unrecognised is shown as generic motion rather than guessed at.
+restore".
 
-With **use game colour** on, the colour swatch becomes the *fallback*, used
-when a game has no usable cover art. Each card states which colour is
-currently in play.
+Settings save as you change them; there is no Save button.
 
 The light picker is searchable and grouped by room.
 
