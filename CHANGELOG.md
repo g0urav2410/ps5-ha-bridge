@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.12.0
+
+- **Changing a setting now acts on the lights straight away.** Config was
+  only applied at the next PS5 state change, so switching a state off -- or
+  lighting off entirely -- left the lights running with nothing visibly
+  happening. Turning off the state the console is currently in, or the main
+  toggle, now releases the lights (restoring the pre-session snapshot, or
+  switching them off). Editing the active state's colour or brightness
+  updates the lights live.
+- **The light picker is collapsed by default**, showing only what's selected
+  with a "Change" link to open the full list. Listing every light in the
+  house was noise once a choice had been made.
+- **The lighting section stays editable when lighting is switched off.** It
+  was pointer-events locked, so it couldn't be set up before being enabled --
+  and in versions before 2.11 that also locked away the Save button, which is
+  why turning the main toggle off appeared to strand the lights on.
+
 ## 2.11.0
 
 - **Settings now save as you change them.** Nothing persisted until Save was

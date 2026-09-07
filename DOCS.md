@@ -121,7 +121,9 @@ type to filter. An effect the light doesn't have is flagged.
 While a preview is running, that state's "Try it now" becomes "Stop &
 restore".
 
-Settings save as you change them; there is no Save button.
+Settings save as you change them; there is no Save button, and they take
+effect immediately -- switching a state off while the console is in that
+state releases the lights rather than waiting for the next transition.
 
 The light picker is searchable and grouped by room.
 

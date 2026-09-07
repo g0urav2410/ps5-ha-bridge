@@ -140,6 +140,19 @@
   .picker-head input { flex: 1; }
   .sel-count { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
   .no-match { font-size: 0.8rem; color: var(--muted); }
+  /* Listing every light in the house is noise once you've chosen. Collapsed
+     shows only the selection; the full list is one click away. */
+  .picker { margin-bottom: 15px; }
+  .picker-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .picker-row .chips { margin-bottom: 0; }
+  .picker-empty { font-size: 0.83rem; color: var(--muted); }
+  .picker-body { display: none; margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--border-soft); }
+  .picker.open .picker-body { display: block; }
+  .chip.readonly { cursor: default; }
+  .link-btn {
+    background: none; border: none; box-shadow: none; padding: 2px 4px;
+    color: var(--accent-2); font-size: 0.79rem; cursor: pointer; text-decoration: underline;
+  }
   .chip {
     font-size: 0.8rem; padding: 6px 12px; border-radius: 20px; cursor: pointer;
     background: var(--chip); border: 1px solid var(--chip-border); color: var(--muted);
@@ -360,11 +373,19 @@
 
     <div id="lightingBody">
       <p class="caps">Lights to control</p>
-      <div class="picker-head">
-        <input type="text" id="lightSearch" placeholder="Search lights…">
-        <span class="sel-count" id="selCount"></span>
+      <div class="picker" id="picker">
+        <div class="picker-row">
+          <div class="chips" id="selectedChips"></div>
+          <button class="link-btn" id="pickerToggle">Choose lights</button>
+        </div>
+        <div class="picker-body">
+          <div class="picker-head">
+            <input type="text" id="lightSearch" placeholder="Search lights…">
+            <span class="sel-count" id="selCount"></span>
+          </div>
+          <div id="lightsList"></div>
+        </div>
       </div>
-      <div id="lightsList" style="margin-bottom:15px;"></div>
 
       <div class="switch" style="margin-bottom:14px;">
         <label class="toggle sm"><input type="checkbox" id="restoreOnOff"><span class="track"></span></label>
@@ -672,11 +693,23 @@
   // A big Home Assistant can have dozens of lights, so the picker is
   // searchable and grouped by room. Selected lights always render, even when
   // filtered out, so it's never unclear what's currently chosen.
+  function renderSelectedChips() {
+    const box = el("selectedChips");
+    const chosen = availableLights.filter((l) => lighting.lights.includes(l.entity_id));
+    box.innerHTML = chosen.length
+      ? chosen.map((l) => '<span class="chip sel readonly">' + esc(l.name) + "</span>").join("")
+      : '<span class="picker-empty">No lights selected yet.</span>';
+    el("pickerToggle").textContent = el("picker").classList.contains("open")
+      ? "Done"
+      : (chosen.length ? "Change" : "Choose lights");
+  }
+
   function renderLights() {
     const box = el("lightsList");
     if (!availableLights.length) {
       box.innerHTML = '<span class="hint">No lights found in Home Assistant.</span>';
       el("selCount").textContent = "";
+      renderSelectedChips();
       return;
     }
 
@@ -713,6 +746,7 @@
     el("selCount").textContent = n
       ? n + " selected"
       : availableLights.length + " available";
+    renderSelectedChips();
   }
 
   function renderStates() {
@@ -772,9 +806,9 @@
   }
 
   function applyEnabledLook() {
-    const on = !!lighting.enabled;
-    el("lightingBody").style.opacity = on ? "1" : "0.4";
-    el("lightingBody").style.pointerEvents = on ? "auto" : "none";
+    // Deliberately still editable when off, so it can be set up before being
+    // switched on -- only dimmed to show it isn't currently driving anything.
+    el("lightingBody").style.opacity = lighting.enabled ? "1" : "0.55";
   }
 
   function readForm() {
@@ -836,6 +870,7 @@
       el("lightingEnabled").checked = !!lighting.enabled;
       el("restoreOnOff").checked = !!lighting.restoreOnOff;
       applyEnabledLook();
+      if (!lighting.lights.length) el("picker").classList.add("open");
       renderLights();
       renderStates();
       el("lightingCard").style.display = "block";
@@ -878,6 +913,11 @@
     }
   }
 
+  el("pickerToggle").addEventListener("click", () => {
+    el("picker").classList.toggle("open");
+    renderLights();
+  });
+
   el("lightsList").addEventListener("click", (ev) => {
     const chip = ev.target.closest("[data-light]");
     if (!chip || !lighting) return;
@@ -886,6 +926,7 @@
     if (i === -1) lighting.lights.push(id); else lighting.lights.splice(i, 1);
     chip.classList.toggle("sel");
     refreshEffectOptions();
+    renderSelectedChips();
     queueSave();
     el("selCount").textContent = lighting.lights.length
       ? lighting.lights.length + " selected"
