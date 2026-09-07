@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.0.0
+
+Redesigned the panel around one idea: this is a tool for configuring
+colour, so the interface itself should be monochrome and let the only
+saturated things on screen be the colours the lights will actually
+produce. The previous purple-and-cyan treatment competed with the very
+data it was meant to present, which is what made it feel busy.
+
+- **A signal path replaces the status tiles.** `Off - Booting - Home -
+  Playing` is the console's real sequence, so the layout says so. The live
+  node is lit and breathes the way the console's own indicator does; each
+  node carries the colour that state produces, so the whole configuration
+  reads at a glance; and clicking one jumps to its settings.
+- **The four state cards are now an accordion of rows**, each showing a
+  one-line summary ("Scanner - game colour - 47%") with one open at a time.
+  Everything fits on a single screen instead of scrolling through four
+  large cards.
+- Values -- hex codes, IPs, percentages, 0-255 -- are set in monospace
+  throughout, against a heavier grotesk for headings.
+- One chrome accent only: PlayStation blue, reserved for interactive
+  affordance and the live state.
+
 ## 2.12.1
 
 - Switching lighting off now also works while a "Try it now" preview is

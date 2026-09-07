@@ -5,439 +5,417 @@
 <title>PS5 Bridge</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  /* Dark is the design's home ground; the light palette keeps the same
-     purple/cyan identity but drops the glow, which reads as smudge on a
-     light background. */
+  /* ------------------------------------------------------------------
+     This panel exists to configure colour, so the chrome is deliberately
+     monochrome: the only saturated things on screen are the colours the
+     lights will actually produce. The single chrome accent is
+     PlayStation blue, reserved for interactive affordance.
+     ------------------------------------------------------------------ */
   :root {
-    --bg: #0a0713;
-    --bg-wash-1: rgba(124, 58, 237, 0.16);
-    --bg-wash-2: rgba(6, 182, 212, 0.13);
-    --panel: rgba(23, 17, 38, 0.82);
-    --panel-solid: #181128;
-    --inset: rgba(13, 9, 24, 0.75);
-    --border: #2e2450;
-    --border-soft: #2a2047;
-    --fg: #f0e9ff;
-    --muted: #9d8fc0;
-    --accent: #a855f7;
-    --accent-2: #22d3ee;
-    --ok: #4ade80;
-    --bad: #f43f5e;
-    --glow: 0 0 16px rgba(168, 85, 247, 0.4);
-    --glow-soft: 0 0 12px rgba(34, 211, 238, 0.2);
-    --chip: rgba(13, 9, 24, 0.8);
-    --chip-border: #34285c;
+    --bg: #0e1013;
+    --surface: #171a1f;
+    --surface-2: #1d2128;
+    --line: #262b33;
+    --line-soft: #1f242b;
+    --text: #e8eaed;
+    --muted: #8a929e;
+    --faint: #5c646f;
+    --accent: #2b8fff;
+    --accent-dim: rgba(43, 143, 255, 0.14);
+    --ok: #46c07a;
+    --bad: #e5484d;
+    --shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
   }
   :root[data-theme="light"] {
-    --bg: #f7f5fc;
-    --panel-solid: #ffffff;
-    --bg-wash-1: rgba(124, 58, 237, 0.07);
-    --bg-wash-2: rgba(6, 182, 212, 0.06);
-    --panel: #ffffff;
-    --inset: #faf9fd;
-    --border: #e4dff2;
-    --border-soft: #ece8f6;
-    --fg: #1b1430;
-    --muted: #6b6288;
-    --accent: #7c3aed;
-    --accent-2: #0891b2;
-    --ok: #16a34a;
-    --bad: #e11d48;
-    --glow: 0 1px 3px rgba(124, 58, 237, 0.18);
-    --glow-soft: none;
-    --chip: #f4f1fb;
-    --chip-border: #e0d9f2;
+    --bg: #f1f2f4;
+    --surface: #ffffff;
+    --surface-2: #f7f8f9;
+    --line: #dfe3e8;
+    --line-soft: #e9ecf0;
+    --text: #14171c;
+    --muted: #656d79;
+    --faint: #98a0ab;
+    --accent: #0070d1;
+    --accent-dim: rgba(0, 112, 209, 0.1);
+    --ok: #1a8c4a;
+    --bad: #c9252b;
+    --shadow: 0 16px 34px rgba(16, 20, 26, 0.14);
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
-      --bg: #f7f5fc;
-      --panel-solid: #ffffff;
-      --bg-wash-1: rgba(124, 58, 237, 0.07);
-      --bg-wash-2: rgba(6, 182, 212, 0.06);
-      --panel: #ffffff;
-      --inset: #faf9fd;
-      --border: #e4dff2;
-      --border-soft: #ece8f6;
-      --fg: #1b1430;
-      --muted: #6b6288;
-      --accent: #7c3aed;
-      --accent-2: #0891b2;
-      --ok: #16a34a;
-      --bad: #e11d48;
-      --glow: 0 1px 3px rgba(124, 58, 237, 0.18);
-      --glow-soft: none;
-      --chip: #f4f1fb;
-      --chip-border: #e0d9f2;
+      --bg: #f1f2f4;
+      --surface: #ffffff;
+      --surface-2: #f7f8f9;
+      --line: #dfe3e8;
+      --line-soft: #e9ecf0;
+      --text: #14171c;
+      --muted: #656d79;
+      --faint: #98a0ab;
+      --accent: #0070d1;
+      --accent-dim: rgba(0, 112, 209, 0.1);
+      --ok: #1a8c4a;
+      --bad: #c9252b;
+      --shadow: 0 16px 34px rgba(16, 20, 26, 0.14);
     }
   }
 
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
-    padding: 20px 16px 48px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: var(--fg);
+    padding: 22px 16px 56px;
     background: var(--bg);
-    background-image:
-      radial-gradient(circle at 12% 6%, var(--bg-wash-1), transparent 42%),
-      radial-gradient(circle at 88% 84%, var(--bg-wash-2), transparent 45%);
-    background-attachment: fixed;
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     line-height: 1.5;
   }
-  .wrap { max-width: 640px; margin: 0 auto; }
+  .wrap { max-width: 620px; margin: 0 auto; }
 
-  /* header */
-  .hdr { display: flex; align-items: center; gap: 13px; margin-bottom: 18px; }
-  .logo {
-    width: 42px; height: 42px; border-radius: 12px; flex: none;
-    display: grid; place-items: center;
-    font-weight: 800; font-size: 0.9rem; color: #fff;
-    background: linear-gradient(145deg, var(--accent), #c026d3);
-    box-shadow: var(--glow);
+  /* Every reading here is a value -- hex codes, IPs, 0-255 -- so values are
+     set in mono. The contrast against the heavy grotesk is the personality. */
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+    font-size: 0.76rem;
   }
-  .hdr h1 { margin: 0; font-size: 1.15rem; }
-  .hdr .sub { margin: 1px 0 0; font-size: 0.78rem; color: var(--muted); }
-  .pill {
-    margin-left: auto; font-size: 0.63rem; font-weight: 700;
-    letter-spacing: 0.09em; padding: 4px 9px; border-radius: 20px;
-    border: 1px solid transparent; white-space: nowrap;
-  }
-  .pill.live { background: rgba(34,211,238,0.12); color: var(--accent-2); border-color: rgba(34,211,238,0.45); box-shadow: var(--glow-soft); }
-  .pill.down { background: rgba(244,63,94,0.12); color: var(--bad); border-color: rgba(244,63,94,0.4); }
-  .theme-btn {
-    background: transparent; border: 1px solid var(--border); color: var(--muted);
-    border-radius: 8px; width: 30px; height: 30px; cursor: pointer;
-    font-size: 0.85rem; line-height: 1; flex: none;
+  .label {
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+    font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--faint);
   }
 
-  /* panels */
-  .panel {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 14px; padding: 17px; margin-bottom: 14px;
-  }
-  .panel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
-  .panel-head h2 { margin: 0; font-size: 1rem; flex: 1; }
-  .caps { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 8px; }
-  .hint { font-size: 0.81rem; color: var(--muted); margin: 0.5rem 0 0; }
-  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.78rem; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
-  /* live status */
-  .status { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
-  .stat { background: var(--inset); border: 1px solid var(--border-soft); border-radius: 10px; padding: 11px 12px; }
-  .stat.wide { grid-column: 1 / -1; }
-  .stat .k { display: block; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
-  .stat .v { display: block; font-size: 0.95rem; font-weight: 650; margin-top: 2px; word-break: break-word; }
-  .v.on { color: var(--ok); }
-  .v.accent { color: var(--accent-2); }
-  .swatch-row { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
-  .swatch { width: 78px; height: 42px; border-radius: 9px; flex: none; border: 1px solid var(--border); }
-
-  /* chips (light pickers) */
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
-  .area-group { margin-bottom: 11px; }
-  .area-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 5px; opacity: 0.8; }
-  .picker-head { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
-  .picker-head input { flex: 1; }
-  .sel-count { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
-  .no-match { font-size: 0.8rem; color: var(--muted); }
-  /* Listing every light in the house is noise once you've chosen. Collapsed
-     shows only the selection; the full list is one click away. */
-  .picker { margin-bottom: 15px; }
-  .picker-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
-  .picker-row .chips { margin-bottom: 0; }
-  .picker-empty { font-size: 0.83rem; color: var(--muted); }
-  .picker-body { display: none; margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--border-soft); }
-  .picker.open .picker-body { display: block; }
-  .chip.readonly { cursor: default; }
-  .link-btn {
-    background: none; border: none; box-shadow: none; padding: 2px 4px;
-    color: var(--accent-2); font-size: 0.79rem; cursor: pointer; text-decoration: underline;
+  /* ---------------------------------------------------------- header */
+  .top { display: flex; align-items: baseline; gap: 10px; margin-bottom: 20px; }
+  .top h1 { margin: 0; font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em; }
+  .top .host { color: var(--faint); }
+  .top .right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .conn { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+  .conn i { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); display: block; }
+  .conn.up i { background: var(--ok); }
+  .conn.down i { background: var(--bad); }
+  .icon-btn {
+    background: none; border: 1px solid var(--line); color: var(--muted);
+    width: 26px; height: 26px; border-radius: 6px; cursor: pointer;
+    font-size: 0.8rem; line-height: 1; padding: 0;
   }
+  .icon-btn:hover { color: var(--text); border-color: var(--muted); }
+
+  /* ------------------------------------------------- signal path hero */
+  /* The console's states are a real sequence, so the structure says so.
+     Each node carries the colour that state produces, which makes the whole
+     configuration legible at a glance. */
+  .monitor {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; padding: 20px 18px 16px; margin-bottom: 12px;
+  }
+  .readout { display: flex; align-items: flex-end; gap: 12px; margin-bottom: 22px; }
+  .readout .now { font-size: 2rem; font-weight: 800; letter-spacing: -0.035em; line-height: 1; margin: 2px 0 0; }
+  .readout .sub { color: var(--muted); font-size: 0.85rem; margin: 0 0 2px; }
+  .readout .power { margin-left: auto; text-align: right; }
+
+  .path { display: flex; }
+  .node {
+    flex: 1; background: none; border: 0; padding: 0; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 7px;
+    font-family: inherit; position: relative; color: inherit;
+  }
+  .node::before {
+    content: ""; position: absolute; top: 5px; left: -50%; right: 50%;
+    height: 1px; background: var(--line);
+  }
+  .node:first-child::before { display: none; }
+  .node .pip {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--bg);
+    position: relative; z-index: 1;
+  }
+  .node .nm {
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint);
+  }
+  .node .swatch { width: 26px; height: 4px; border-radius: 2px; background: var(--line-soft); }
+  .node.on .pip { background: var(--text); border-color: var(--text); }
+  .node.on .nm { color: var(--text); }
+  .node.live .pip { background: var(--accent); border-color: var(--accent); }
+  .node.live .nm { color: var(--accent); }
+  /* One deliberate motion: the live node breathes, the way the console's
+     own indicator does. */
+  .node.live .pip::after {
+    content: ""; position: absolute; inset: -5px; border-radius: 50%;
+    border: 1px solid var(--accent); animation: breathe 2.4s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(0.75); opacity: 0.55; }
+    50% { transform: scale(1.15); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .node.live .pip::after { animation: none; opacity: 0.4; } }
+
+  /* -------------------------------------------------------- sections */
+  .sec {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; margin-bottom: 12px; overflow: hidden;
+  }
+  .sec-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--line-soft);
+  }
+  .sec-head h2 { margin: 0; font-size: 0.85rem; font-weight: 650; flex: 1; }
+  .sec-body { padding: 16px; }
+  .note { font-size: 0.78rem; color: var(--muted); margin: 0; }
+  .note.ok { color: var(--ok); }
+  .note.err { color: var(--bad); }
+
+  /* ------------------------------------------------------ light picker */
+  .picker-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
   .chip {
-    font-size: 0.8rem; padding: 6px 12px; border-radius: 20px; cursor: pointer;
-    background: var(--chip); border: 1px solid var(--chip-border); color: var(--muted);
+    font-size: 0.78rem; padding: 4px 10px; border-radius: 5px; cursor: pointer;
+    background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
     user-select: none;
   }
-  .chip.sel { background: rgba(168,85,247,0.17); border-color: var(--accent); color: var(--fg); box-shadow: var(--glow-soft); }
+  .chip.sel { border-color: var(--accent); color: var(--text); background: var(--accent-dim); }
+  .chip.readonly { cursor: default; }
+  .picker-body { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+  .picker.open .picker-body { display: block; }
+  .area-group { margin-bottom: 12px; }
+  .area-group:last-child { margin-bottom: 0; }
+  .area-group .label { display: block; margin-bottom: 6px; }
+  .picker-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .picker-head input { flex: 1; }
+  .link {
+    background: none; border: 0; padding: 2px; cursor: pointer;
+    color: var(--accent); font-family: inherit; font-size: 0.79rem;
+  }
+  .link:hover { text-decoration: underline; }
 
-  /* per-state cards */
-  /* Each card is treated as the screen, with the LED strip running around
-     its edge the way a bias light wraps a TV. The simulation is drawn to a
-     canvas sitting behind the card and blurred, so what you see is the spill
-     on the wall rather than the LEDs themselves. */
-  .state {
-    background: var(--panel);
-    border: 1px solid var(--border-soft);
-    border-radius: 11px;
-    margin-bottom: 13px;
-    position: relative;
-    transition: border-color 0.3s;
+  /* --------------------------------------------------- state accordion */
+  .states { border-top: 1px solid var(--line-soft); }
+  .state { border-bottom: 1px solid var(--line-soft); }
+  .state:last-child { border-bottom: 0; }
+  .row {
+    display: flex; align-items: center; gap: 11px; width: 100%;
+    padding: 13px 16px; background: none; border: 0; cursor: pointer;
+    font-family: inherit; color: inherit; text-align: left;
   }
-  .state-glow {
-    position: absolute;
-    inset: -6px;
-    z-index: -1;
-    pointer-events: none;
-    border-radius: 15px;
-    background: var(--state-color, transparent);
-    filter: blur(7px);
-    opacity: 0;
-    transition: opacity 0.35s, background 0.35s;
+  .row:hover { background: var(--surface-2); }
+  /* The colour bar is the only saturated thing in the row, because it is
+     the data. */
+  .row .bar {
+    width: 4px; align-self: stretch; min-height: 30px; border-radius: 2px; flex: none;
+    background: var(--state-color, var(--line));
   }
-  .state.lit .state-glow { opacity: 0.5; }
-  .state.lit { border-color: color-mix(in srgb, var(--state-color) 22%, var(--border-soft)); }
+  .row .nm { font-size: 0.85rem; font-weight: 600; }
+  .row .summary { color: var(--faint); margin-left: auto; margin-right: 2px; }
+  .state.off .row .nm, .state.off .row .summary { color: var(--faint); }
+  .chev { color: var(--faint); font-size: 0.65rem; transition: transform 0.18s; }
+  .state.open .chev { transform: rotate(90deg); }
+  .body { display: none; padding: 2px 16px 16px 31px; }
+  .state.open .body { display: block; }
+
+  .ctrl { display: flex; align-items: center; gap: 12px; margin-bottom: 11px; }
+  .ctrl > .label { width: 74px; flex: none; }
+  .ctrl .val {
+    margin-left: auto; color: var(--muted); min-width: 3rem; text-align: right;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.74rem;
+  }
+  .hint { font-size: 0.76rem; color: var(--faint); margin: -4px 0 12px 86px; line-height: 1.5; }
   .swatch-inline {
-    width: 13px; height: 13px; border-radius: 3px; display: inline-block;
-    vertical-align: -2px; border: 1px solid var(--border-soft); margin: 0 3px;
+    width: 11px; height: 11px; border-radius: 2px; display: inline-block;
+    vertical-align: -1px; margin: 0 3px; border: 1px solid var(--line);
   }
-  .colour-note {
-    font-size: 0.75rem; color: var(--muted);
-    margin: -4px 0 0 87px; line-height: 1.45;
+
+  /* ----------------------------------------------------------- inputs */
+  input[type="text"] {
+    background: var(--surface-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 6px; padding: 7px 10px; font-family: inherit; font-size: 0.83rem;
+    min-width: 0; width: 100%;
   }
-  .colour-note code {
-    font-size: 0.72rem; padding: 0.05rem 0.3rem;
+  input[type="text"]::placeholder { color: var(--faint); }
+  input[type="color"] {
+    width: 34px; height: 26px; padding: 2px; cursor: pointer; flex: none;
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px;
   }
-  /* A <datalist> only surfaces matches once you start typing, which is no
-     help when you don't know the ~180 effect names. This is a real listbox:
-     focus shows everything, typing filters. */
-  .fx-wrap { position: relative; flex: 1.4; min-width: 0; display: flex; }
-  .fx-wrap input { flex: 1; min-width: 0; }
+  input[type="range"] {
+    flex: 1; min-width: 0; -webkit-appearance: none; appearance: none;
+    height: 2px; background: var(--line); border-radius: 2px; outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 13px; height: 13px;
+    border-radius: 50%; background: var(--text); cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 13px; height: 13px; border: 0; border-radius: 50%; background: var(--text); cursor: pointer;
+  }
+  button.btn {
+    font-family: inherit; font-size: 0.79rem; padding: 6px 12px; border-radius: 6px;
+    cursor: pointer; background: var(--surface-2); border: 1px solid var(--line); color: var(--text);
+  }
+  button.btn:hover { border-color: var(--muted); }
+  button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.btn.stop { border-color: var(--bad); color: var(--bad); }
+  button.btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
+
+  .sw { position: relative; width: 32px; height: 18px; flex: none; display: inline-block; }
+  .sw input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 1; }
+  .sw .tr { position: absolute; inset: 0; border-radius: 10px; background: var(--line); transition: background 0.15s; }
+  .sw .tr::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--faint); transition: transform 0.15s, background 0.15s;
+  }
+  .sw input:checked + .tr { background: var(--accent); }
+  .sw input:checked + .tr::after { background: #fff; transform: translateX(14px); }
+  .inline-sw { display: inline-flex; align-items: center; gap: 8px; font-size: 0.79rem; color: var(--muted); cursor: pointer; }
+
+  /* ------------------------------------------------- effect combobox */
+  .fx { position: relative; flex: 1; min-width: 0; display: flex; }
   .fx-list {
-    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-    overflow-y: auto; z-index: 30;
-    background: var(--panel-solid); border: 1px solid var(--chip-border);
-    border-radius: 8px; box-shadow: 0 14px 34px rgba(0,0,0,0.55);
-    display: none; padding: 4px;
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 7px;
+    box-shadow: var(--shadow); overflow-y: auto; display: none; padding: 4px;
   }
   .fx-list.open { display: block; }
   .fx-list.above { top: auto; bottom: calc(100% + 4px); }
   .fx-count {
-    padding: 5px 9px 6px; font-size: 0.7rem; color: var(--muted);
-    border-bottom: 1px solid var(--border-soft); margin-bottom: 3px;
-    position: sticky; top: 0; background: var(--panel-solid);
+    position: sticky; top: 0; background: var(--surface); margin: 0 0 3px;
+    padding: 5px 8px 6px; border-bottom: 1px solid var(--line-soft);
   }
-  .fx-opt { padding: 6px 9px; border-radius: 5px; font-size: 0.83rem; cursor: pointer; }
-  .fx-opt:hover, .fx-opt.active { background: rgba(168,85,247,0.22); color: var(--fg); }
-  .fx-opt.none { color: var(--muted); font-style: italic; }
-  .fx-empty { padding: 7px 9px; font-size: 0.8rem; color: var(--muted); }
-  .preview-dot {
-    width: 15px; height: 15px; border-radius: 50%; flex: none;
-    background: var(--state-color, var(--muted));
-    box-shadow: 0 0 10px var(--state-color, transparent);
-  }
-  .preview-dot {
-    width: 15px; height: 15px; border-radius: 50%; flex: none;
-    background: var(--state-color, var(--muted));
-    box-shadow: 0 0 10px var(--state-color, transparent);
-  }
-  .strip-wrap { position: relative; padding: 0 13px 12px; }
-  canvas.strip {
-    display: block; width: 100%; height: 22px;
-    border-radius: 5px; border: 1px solid var(--border-soft);
-  }
-  .strip-caption {
-    font-size: 0.68rem; color: var(--muted); margin: 5px 0 0;
-    display: flex; justify-content: space-between; gap: 8px;
-  }
-  .strip-caption .approx { opacity: 0.75; }
-  .preview-dot {
-    width: 15px; height: 15px; border-radius: 50%; flex: none;
-    background: var(--state-color, var(--muted));
-    box-shadow: 0 0 10px var(--state-color, transparent);
-  }
-  .state-head { display: flex; align-items: center; gap: 10px; padding: 12px 13px; }
-  .state-head h3 { margin: 0; font-size: 0.9rem; flex: 1; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-  .tag {
-    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em;
-    padding: 3px 7px; border-radius: 5px;
-    background: rgba(34,211,238,0.13); color: var(--accent-2);
-    border: 1px solid rgba(34,211,238,0.3);
-  }
-  .state-body { padding: 0 13px 13px; display: flex; flex-direction: column; gap: 10px; }
-  .state-body.disabled { opacity: 0.38; pointer-events: none; }
-  .ctrl { display: flex; align-items: center; gap: 11px; }
-  .ctrl .k { width: 76px; flex: none; font-size: 0.8rem; color: var(--muted); }
-  .ctrl .val { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.75rem; color: var(--muted); width: 3rem; text-align: right; }
+  .fx-opt { padding: 6px 8px; border-radius: 4px; font-size: 0.81rem; cursor: pointer; }
+  .fx-opt:hover { background: var(--accent-dim); color: var(--text); }
+  .fx-opt.none { color: var(--faint); }
+  .fx-empty { padding: 7px 8px; font-size: 0.79rem; color: var(--faint); margin: 0; }
 
-  select, input[type="text"] {
-    flex: 1; min-width: 0; background: var(--inset); color: var(--fg);
-    border: 1px solid var(--chip-border); border-radius: 7px;
-    padding: 7px 10px; font-family: inherit; font-size: 0.84rem;
-  }
-  input[type="color"] {
-    width: 42px; height: 28px; padding: 2px; cursor: pointer;
-    background: var(--inset); border: 1px solid var(--chip-border); border-radius: 6px;
-  }
-  input[type="range"] {
-    flex: 1; min-width: 0; -webkit-appearance: none; appearance: none;
-    height: 5px; border-radius: 3px; background: var(--border-soft); outline: none;
-  }
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none;
-    width: 15px; height: 15px; border-radius: 50%; cursor: pointer;
-    background: #fff; box-shadow: 0 0 8px rgba(168,85,247,0.8), 0 0 0 1px var(--accent);
-  }
-  input[type="range"]::-moz-range-thumb {
-    width: 15px; height: 15px; border: none; border-radius: 50%; cursor: pointer;
-    background: #fff; box-shadow: 0 0 8px rgba(168,85,247,0.8), 0 0 0 1px var(--accent);
-  }
-
-  button {
-    font-family: inherit; font-size: 0.84rem; padding: 8px 15px;
-    border-radius: 8px; border: none; cursor: pointer;
-    background: linear-gradient(135deg, var(--accent), #7c3aed);
-    color: #fff; box-shadow: var(--glow);
-  }
-  button.secondary { background: transparent; border: 1px solid var(--chip-border); color: var(--muted); box-shadow: none; }
-  button.danger { background: transparent; border: 1px solid var(--bad); color: var(--bad); box-shadow: none; }
-  button.tiny { font-size: 0.75rem; padding: 6px 11px; }
-  button:disabled { opacity: 0.5; cursor: default; }
-  .btn-row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
-
-  /* toggle switch */
-  .toggle { position: relative; width: 36px; height: 20px; flex: none; }
-  .toggle.sm { width: 31px; height: 17px; }
-  .toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
-  .track { position: absolute; inset: 0; border-radius: 20px; background: var(--border-soft); transition: 0.15s; cursor: pointer; }
-  .track::after {
-    content: ""; position: absolute; top: 2px; left: 2px;
-    width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: 0.15s;
-  }
-  .toggle.sm .track::after { width: 13px; height: 13px; }
-  .toggle input:checked + .track { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
-  .toggle input:checked + .track::after { background: #fff; transform: translateX(16px); }
-  .toggle.sm input:checked + .track::after { transform: translateX(14px); }
-  .switch { display: flex; align-items: center; gap: 8px; font-size: 0.84rem; }
-
-  /* setup steps */
-  ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: step; }
-  ol.steps li { counter-increment: step; position: relative; padding-left: 2.1rem; margin-bottom: 0.9rem; font-size: 0.87rem; }
+  /* --------------------------------------------------------- pairing */
+  ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: s; }
+  ol.steps li { counter-increment: s; position: relative; padding-left: 27px; margin-bottom: 12px; font-size: 0.84rem; }
   ol.steps li:last-child { margin-bottom: 0; }
   ol.steps li::before {
-    content: counter(step); position: absolute; left: 0; top: 0;
-    width: 1.55rem; height: 1.55rem; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.78rem; font-weight: 700; color: #fff;
-    background: linear-gradient(135deg, var(--accent), #7c3aed);
+    content: counter(s); position: absolute; left: 0; top: 2px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.66rem;
+    color: var(--faint); border: 1px solid var(--line); border-radius: 4px;
+    width: 17px; height: 17px; display: grid; place-items: center;
   }
-  a.button { display: inline-block; text-decoration: none; }
-  code { background: var(--chip); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
+  a.link-out { color: var(--accent); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    background: var(--surface-2); padding: 1px 5px; border-radius: 3px; font-size: 0.78rem;
+  }
   pre {
-    background: var(--inset); border: 1px solid var(--border-soft); border-radius: 8px;
-    padding: 0.7rem; font-size: 0.75rem; overflow-x: auto; max-height: 300px; margin-top: 0.7rem;
+    background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: 6px;
+    padding: 10px; font-size: 0.72rem; overflow-x: auto; max-height: 280px; margin: 12px 0 0;
   }
-  .note { font-size: 0.8rem; min-height: 1.1em; }
-  .note.ok { color: var(--ok); }
-  .note.err { color: var(--bad); }
+
+  @media (max-width: 420px) {
+    .readout .now { font-size: 1.6rem; }
+    .ctrl > .label { width: 62px; }
+    .hint { margin-left: 74px; }
+    .body { padding-left: 24px; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <header class="hdr">
-    <div class="logo">PS</div>
-    <div>
-      <h1>PS5 Bridge</h1>
-      <p class="sub" id="sub">connecting&hellip;</p>
+  <header class="top">
+    <h1>PS5 Bridge</h1>
+    <span class="mono host" id="host"></span>
+    <div class="right">
+      <span class="conn mono" id="conn"><i></i><span id="connText">connecting</span></span>
+      <button class="icon-btn" id="themeBtn" title="Switch between light and dark" aria-label="Switch between light and dark">◐</button>
     </div>
-    <span class="pill down" id="livePill">OFFLINE</span>
-    <button class="theme-btn" id="themeBtn" title="Switch theme">◐</button>
   </header>
 
-  <!-- live status -->
-  <section class="panel">
-    <div class="status">
-      <div class="stat"><span class="k">Power</span><span class="v" id="vPower">–</span></div>
-      <div class="stat"><span class="k">State</span><span class="v accent" id="vState">–</span></div>
-      <div class="stat wide"><span class="k">Now playing</span><span class="v" id="vActivity">–</span></div>
-      <div class="swatch-row" id="colorRow" style="display:none;">
-        <div class="swatch" id="colorSwatch"></div>
-        <div>
-          <span class="k" style="font-size:0.66rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">Game colour</span><br>
-          <span class="mono" id="colorHex"></span>
-        </div>
+  <section class="monitor">
+    <div class="readout">
+      <div>
+        <span class="label">Console</span>
+        <p class="now" id="nowState">&mdash;</p>
+      </div>
+      <p class="sub" id="nowDetail"></p>
+      <div class="power">
+        <span class="label">Power</span>
+        <p class="sub mono" id="nowPower" style="margin:3px 0 0;">&mdash;</p>
       </div>
     </div>
+    <div class="path" id="path"></div>
   </section>
 
-  <!-- lighting -->
-  <section class="panel" id="lightingCard" style="display:none;">
-    <div class="panel-head">
+  <section class="sec" id="lightingCard" style="display:none;">
+    <div class="sec-head">
       <h2>Lighting</h2>
-      <label class="toggle"><input type="checkbox" id="lightingEnabled"><span class="track"></span></label>
+      <span class="note" id="saveNote" style="text-align:right;"></span>
+      <label class="sw" title="Control lights from the PS5's state">
+        <input type="checkbox" id="lightingEnabled" aria-label="Control lights from the PS5's state">
+        <span class="tr"></span>
+      </label>
     </div>
-    <p class="hint" style="margin-top:-6px;margin-bottom:14px;">
-      Drive your lights from the PS5's state — no automations needed.
-    </p>
 
-    <div id="lightingBody">
-      <p class="caps">Lights to control</p>
-      <div class="picker" id="picker">
+    <div class="sec-body" id="lightingBody">
+      <span class="label">Lights</span>
+      <div class="picker" id="picker" style="margin-top:8px;">
         <div class="picker-row">
           <div class="chips" id="selectedChips"></div>
-          <button class="link-btn" id="pickerToggle">Choose lights</button>
+          <button class="link" id="pickerToggle">Choose lights</button>
         </div>
         <div class="picker-body">
           <div class="picker-head">
-            <input type="text" id="lightSearch" placeholder="Search lights…">
-            <span class="sel-count" id="selCount"></span>
+            <input type="text" id="lightSearch" placeholder="Search lights">
+            <span class="mono" id="selCount" style="color:var(--faint);white-space:nowrap;"></span>
           </div>
           <div id="lightsList"></div>
         </div>
       </div>
 
-      <div class="switch" style="margin-bottom:14px;">
-        <label class="toggle sm"><input type="checkbox" id="restoreOnOff"><span class="track"></span></label>
-        <span>Restore previous lighting when the PS5 turns off</span>
-      </div>
+      <label class="inline-sw" style="margin-top:16px;">
+        <span class="sw"><input type="checkbox" id="restoreOnOff"><span class="tr"></span></span>
+        Put the lights back when the PS5 turns off
+      </label>
+    </div>
 
-      <div id="stateBlocks" style="padding:4px 2px; isolation: isolate;"></div>
+    <div class="states" id="stateRows"></div>
+  </section>
 
+  <section class="sec" id="pairCard" style="display:none;">
+    <div class="sec-head"><h2>Connect your PSN account</h2></div>
+    <div class="sec-body">
+      <p class="note" style="margin-bottom:14px;">One time. This is what tells the bridge which game is running.</p>
+      <ol class="steps">
+        <li>Sign in to <strong>playstation.com</strong> in a browser on this device.</li>
+        <li><a class="link-out" href="https://ca.account.sony.com/api/v1/ssocookie" target="_blank" rel="noopener">Open your login code</a> in a new tab.</li>
+        <li>Copy everything on that page. It looks like <code>{"npsso":"…"}</code>.</li>
+        <li>
+          Paste it here.
+          <div class="btn-row" style="margin-top:9px;">
+            <input type="text" id="npssoInput" placeholder="Paste the whole thing, or just the code">
+          </div>
+          <div class="btn-row" style="margin-top:9px;">
+            <button class="btn primary" id="pairButton">Connect</button>
+            <button class="btn" id="pasteButton">Paste from clipboard</button>
+            <span class="note" id="pairNote"></span>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="sec" id="pairedCard" style="display:none;">
+    <div class="sec-head">
+      <h2>PSN account</h2>
+      <span class="mono" id="onlineId" style="color:var(--muted);"></span>
+    </div>
+    <div class="sec-body">
       <div class="btn-row">
-        <span class="note" id="saveNote">Changes save automatically.</span>
+        <button class="btn" id="rawButton">Show what PSN returns</button>
+        <button class="btn" id="unpairButton">Disconnect</button>
       </div>
+      <p class="note" id="rawHint" style="display:none;margin-top:12px;">
+        If <code>gameTitleInfoList</code> is empty while a game is running, PSN is
+        withholding it. Check <em>Online Status and Now Playing</em> in the console's
+        privacy settings.
+      </p>
+      <pre id="rawOutput" style="display:none;"></pre>
     </div>
-  </section>
-
-  <!-- PSN pairing -->
-  <section class="panel" id="pairCard" style="display:none;">
-    <div class="panel-head"><h2>Connect your PSN account</h2></div>
-    <p class="hint" style="margin-top:-6px;margin-bottom:14px;">
-      One-time. Unlocks knowing <em>what</em> you're playing, not just on/off.
-    </p>
-    <ol class="steps">
-      <li>Make sure you're logged into <strong>playstation.com</strong> in a browser on this device.</li>
-      <li><a class="button" href="https://ca.account.sony.com/api/v1/ssocookie" target="_blank" rel="noopener">Open my login code →</a></li>
-      <li>Copy everything on that page — it looks like <code>{"npsso":"..."}</code>.</li>
-      <li>
-        Paste it below.
-        <div class="btn-row">
-          <input type="text" id="npssoInput" placeholder="Paste the whole thing, or just the code">
-          <button class="secondary tiny" id="pasteButton">Paste</button>
-        </div>
-        <div class="btn-row">
-          <button id="pairButton">Connect</button>
-          <span class="note" id="pairNote"></span>
-        </div>
-      </li>
-    </ol>
-  </section>
-
-  <!-- connected + diagnostics -->
-  <section class="panel" id="pairedCard" style="display:none;">
-    <div class="panel-head"><h2>PSN account</h2><span class="tag" id="onlineIdTag"></span></div>
-    <p class="hint" style="margin-top:-6px;">Game and activity data is flowing.</p>
-    <div class="btn-row">
-      <button class="secondary tiny" id="rawButton">Show raw presence</button>
-      <button class="danger tiny" id="unpairButton">Disconnect</button>
-    </div>
-    <pre id="rawOutput" style="display:none;"></pre>
-    <p class="hint" id="rawHint" style="display:none;">
-      If <code>gameTitleInfoList</code> is empty while a game is running, Sony is
-      withholding it — check <em>Online Status and Now Playing</em> in the console's
-      privacy settings.
-    </p>
   </section>
 
 </div>
@@ -445,10 +423,8 @@
 <script>
   const el = (id) => document.getElementById(id);
 
-  // ---------------------------------------------------------------- theme
-  // Ingress gives us no way to read Home Assistant's theme directly, so we
-  // follow the browser's colour-scheme preference (which tracks HA's dark
-  // mode in the common case) and let the button override it.
+  // Ingress gives no way to read Home Assistant's theme, so follow the
+  // browser's preference and let the button override it.
   const savedTheme = (() => { try { return localStorage.getItem("ps5bridge-theme"); } catch { return null; } })();
   if (savedTheme === "dark" || savedTheme === "light") {
     document.documentElement.setAttribute("data-theme", savedTheme);
@@ -457,83 +433,109 @@
     const root = document.documentElement;
     const current = root.getAttribute("data-theme");
     const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
-    const effective = current || (prefersLight ? "light" : "dark");
-    const next = effective === "dark" ? "light" : "dark";
+    const next = (current || (prefersLight ? "light" : "dark")) === "dark" ? "light" : "dark";
     root.setAttribute("data-theme", next);
     try { localStorage.setItem("ps5bridge-theme", next); } catch {}
   });
 
-  // ------------------------------------------------------------- status
-  const PRETTY = { off: "Off", booting: "Booting", home: "Home screen", playing: "Playing", awake: "Awake" };
+  const STATES = [["off", "Off"], ["booting", "Booting"], ["home", "Home"], ["playing", "Playing"]];
 
+  let lighting = null;
+  let availableLights = [];
+  let currentGameColor = null;
+  let liveState = null;
+  const fxFilter = {};
+
+  const esc = (v) => String(v).replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // ------------------------------------------------------------- status
   async function refreshStatus() {
     try {
-      const data = await (await fetch("api/status")).json();
+      const d = await (await fetch("api/status")).json();
 
-      el("livePill").textContent = "LIVE";
-      el("livePill").className = "pill live";
-      el("sub").textContent = data.ps5Ip
-        ? data.ps5Ip + (data.onlineId ? " · " + data.onlineId : "")
-        : "";
+      el("conn").className = "conn mono up";
+      el("connText").textContent = "connected";
+      el("host").textContent = d.ps5Ip || "";
 
-      el("vPower").textContent =
-        data.power === "AWAKE" ? "On" : data.power === "STANDBY" ? "Standby" : "Unknown";
-      el("vPower").className = "v" + (data.power === "AWAKE" ? " on" : "");
-      el("vState").textContent = PRETTY[data.derivedState] || data.derivedState || "–";
-      el("vActivity").textContent = data.activity && data.activity !== "none" ? data.activity : "–";
+      liveState = d.derivedState || null;
+      const label = (STATES.find((s) => s[0] === liveState) || [])[1];
+      el("nowState").textContent = label || (d.power === "AWAKE" ? "Awake" : "—");
+      el("nowPower").textContent =
+        d.power === "AWAKE" ? "on" : d.power === "STANDBY" ? "standby" : "unknown";
+      el("nowDetail").textContent =
+        d.activity && d.activity !== "none" && d.activity !== "unknown" ? d.activity : "";
 
-      if (data.gameColor !== currentGameColor) {
-        currentGameColor = data.gameColor || null;
-        if (lighting) for (const [k] of STATES) paintState(k);
+      if (d.gameColor !== currentGameColor) {
+        currentGameColor = d.gameColor || null;
+        if (lighting) paintAll();
       }
-      if (data.gameColor) {
-        el("colorRow").style.display = "flex";
-        el("colorSwatch").style.background = data.gameColor;
-        el("colorHex").textContent = data.gameColor;
-      } else {
-        el("colorRow").style.display = "none";
-      }
+      renderPath();
 
-      el("pairCard").style.display = data.paired ? "none" : "block";
-      el("pairedCard").style.display = data.paired ? "block" : "none";
-      el("onlineIdTag").textContent = data.onlineId || "connected";
-    } catch (e) {
-      el("livePill").textContent = "OFFLINE";
-      el("livePill").className = "pill down";
+      el("pairCard").style.display = d.paired ? "none" : "block";
+      el("pairedCard").style.display = d.paired ? "block" : "none";
+      el("onlineId").textContent = d.onlineId || "";
+    } catch {
+      el("conn").className = "conn mono down";
+      el("connText").textContent = "no connection";
     }
   }
+
+  // --------------------------------------------------------- signal path
+  function colourFor(key) {
+    if (!lighting || key === "off") return null;
+    const c = lighting.states[key];
+    if (!c || !c.enabled) return null;
+    const useGame = key === "playing" && c.useGameColor;
+    return useGame ? (currentGameColor || c.color) : c.color;
+  }
+
+  function renderPath() {
+    el("path").innerHTML = STATES.map(([key, label]) => {
+      const colour = colourFor(key);
+      const on = lighting && lighting.states[key] && lighting.states[key].enabled;
+      const cls = "node" + (key === liveState ? " live" : "") + (on ? " on" : "");
+      return '<button class="' + cls + '" data-jump="' + key + '" title="Settings for ' + esc(label) + '">' +
+        '<span class="pip"></span><span class="nm">' + esc(label) + "</span>" +
+        '<span class="swatch"' + (colour ? ' style="background:' + esc(colour) + '"' : "") + "></span></button>";
+    }).join("");
+  }
+
+  el("path").addEventListener("click", (ev) => {
+    const node = ev.target.closest("[data-jump]");
+    if (!node || !lighting) return;
+    openState(node.dataset.jump, true);
+  });
 
   // ------------------------------------------------------------ pairing
   function extractNpsso(raw) {
     const t = (raw || "").trim();
     const m = t.match(/"npsso"\s*:\s*"([^"]+)"/);
-    if (m) return m[1];
-    return t.replace(/[{}"]/g, "").replace(/^npsso\s*:\s*/, "").trim();
+    return m ? m[1] : t.replace(/[{}"]/g, "").replace(/^npsso\s*:\s*/, "").trim();
   }
 
   el("pasteButton").addEventListener("click", async () => {
-    try {
-      el("npssoInput").value = await navigator.clipboard.readText();
-    } catch {
+    try { el("npssoInput").value = await navigator.clipboard.readText(); }
+    catch {
       el("pairNote").className = "note err";
-      el("pairNote").textContent = "Couldn't read clipboard — paste manually.";
+      el("pairNote").textContent = "Clipboard unavailable. Paste it manually.";
     }
   });
 
   el("pairButton").addEventListener("click", async () => {
     const note = el("pairNote");
     const npsso = extractNpsso(el("npssoInput").value);
-    note.className = "note";
     if (!npsso) { note.className = "note err"; note.textContent = "Paste your code first."; return; }
     const btn = el("pairButton");
-    btn.disabled = true; btn.textContent = "Connecting…"; note.textContent = "";
+    btn.disabled = true; btn.textContent = "Connecting";
+    note.className = "note"; note.textContent = "";
     try {
       const res = await fetch("api/pair", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ npsso }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to connect");
+      if (!res.ok) throw new Error(data.error || "Could not connect");
       note.className = "note ok";
       note.textContent = "Connected as " + (data.onlineId || "your account");
       await refreshStatus();
@@ -551,48 +553,216 @@
 
   el("rawButton").addEventListener("click", async () => {
     const out = el("rawOutput"), btn = el("rawButton");
-    btn.disabled = true; btn.textContent = "Fetching…";
-    out.style.display = "block"; out.textContent = "Loading…";
+    btn.disabled = true; btn.textContent = "Fetching";
+    out.style.display = "block"; out.textContent = "Loading";
     el("rawHint").style.display = "block";
     try {
-      const data = await (await fetch("api/presence-raw")).json();
-      out.textContent = JSON.stringify(data, null, 2);
+      out.textContent = JSON.stringify(await (await fetch("api/presence-raw")).json(), null, 2);
     } catch (e) {
       out.textContent = "Failed: " + e.message;
     } finally {
-      btn.disabled = false; btn.textContent = "Show raw presence";
+      btn.disabled = false; btn.textContent = "Show what PSN returns";
     }
   });
 
-  // ----------------------------------------------------------- lighting
-  const STATES = [
-    ["home", "Home screen", "#ffc18d"],
-    ["playing", "Playing a game", "#f43f5e"],
-    ["booting", "Booting up", "#a855f7"],
-    ["off", "Turned off", "#5b4a86"],
-  ];
-  let lighting = null;
-  let availableLights = [];
-  let currentGameColor = null;
-  // null means "not filtering" -- an already-chosen effect shouldn't filter
-  // the list down to itself the moment the field is focused.
-  const fxFilter = {};
+  // ------------------------------------------------------ light picker
+  function renderSelectedChips() {
+    const chosen = availableLights.filter((l) => lighting.lights.includes(l.entity_id));
+    el("selectedChips").innerHTML = chosen.length
+      ? chosen.map((l) => '<span class="chip sel readonly">' + esc(l.name) + "</span>").join("")
+      : '<span class="note">No lights chosen yet.</span>';
+    el("pickerToggle").textContent = el("picker").classList.contains("open")
+      ? "Done" : (chosen.length ? "Change" : "Choose lights");
+  }
 
-  const esc = (v) => String(v).replace(/[&<>"]/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function renderLights() {
+    const box = el("lightsList");
+    if (!availableLights.length) {
+      box.innerHTML = '<p class="note">Home Assistant reports no lights.</p>';
+      el("selCount").textContent = "";
+      renderSelectedChips();
+      return;
+    }
+    const q = (el("lightSearch").value || "").trim().toLowerCase();
+    // Chosen lights always render, even when filtered out, so a search can
+    // never hide what's currently selected.
+    const visible = availableLights.filter((l) =>
+      !q || lighting.lights.includes(l.entity_id) ||
+      l.name.toLowerCase().includes(q) || l.entity_id.toLowerCase().includes(q) ||
+      (l.area || "").toLowerCase().includes(q));
 
-  // Effects are device-specific, so they come from the first selected light.
-  // A union across mismatched lights would offer effects some can't run.
+    const groups = new Map();
+    for (const l of visible) {
+      const k = l.area || "Unassigned";
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(l);
+    }
+    const chip = (l) => '<span class="chip' + (lighting.lights.includes(l.entity_id) ? " sel" : "") +
+      '" data-light="' + esc(l.entity_id) + '" title="' + esc(l.entity_id) + '">' + esc(l.name) + "</span>";
+    const single = groups.size <= 1;
+
+    box.innerHTML = visible.length
+      ? [...groups.entries()].map(([area, lights]) =>
+          '<div class="area-group">' + (single ? "" : '<span class="label">' + esc(area) + "</span>") +
+          '<div class="chips">' + lights.map(chip).join("") + "</div></div>").join("")
+      : '<p class="note">Nothing matches that.</p>';
+
+    el("selCount").textContent = lighting.lights.length
+      ? lighting.lights.length + " chosen" : availableLights.length + " available";
+    renderSelectedChips();
+  }
+
+  el("pickerToggle").addEventListener("click", () => {
+    el("picker").classList.toggle("open");
+    renderLights();
+  });
+  el("lightSearch").addEventListener("input", () => { if (lighting) renderLights(); });
+
+  el("lightsList").addEventListener("click", (ev) => {
+    const chip = ev.target.closest("[data-light]");
+    if (!chip || !lighting) return;
+    const id = chip.dataset.light;
+    const i = lighting.lights.indexOf(id);
+    if (i === -1) lighting.lights.push(id); else lighting.lights.splice(i, 1);
+    renderLights();
+    refreshEffectOptions();
+    queueSave();
+  });
+
+  // ---------------------------------------------------- state accordion
+  // Effects are device-specific, so they come from the first chosen light.
   function currentEffects() {
     const first = availableLights.find((l) => lighting.lights.includes(l.entity_id));
     return first ? first.effects : [];
   }
 
-  // Renders the dropdown for one state, filtered by whatever's typed.
+  function summarise(key) {
+    const c = lighting.states[key];
+    if (!c.enabled) return "ignored";
+    if (key === "off") return c.turnOff === false ? "restore only" : "lights off";
+    const bits = [c.effect || "no effect"];
+    if (key === "playing" && c.useGameColor) bits.push("game colour");
+    bits.push(Math.round((c.brightness / 255) * 100) + "%");
+    return bits.join(" · ");
+  }
+
+  function stateRow(key, label) {
+    const c = lighting.states[key];
+    const isOff = key === "off";
+    const canGame = key === "playing";
+
+    const body = isOff
+      ? '<label class="inline-sw"><span class="sw"><input type="checkbox" data-state="off" data-field="turnOff"' +
+          (c.turnOff !== false ? " checked" : "") + '><span class="tr"></span></span>' +
+          "Switch the lights off when there's nothing to restore</label>"
+      : '<div class="ctrl"><span class="label">Effect</span>' +
+          '<span class="fx"><input type="text" autocomplete="off" data-state="' + key + '" data-field="effect" ' +
+            'placeholder="Click to browse" value="' + esc(c.effect || "") + '">' +
+            '<div class="fx-list" data-fxlist="' + key + '"></div></span></div>' +
+        '<div class="ctrl"><span class="label">' + (canGame && c.useGameColor ? "Fallback" : "Colour") + "</span>" +
+          '<input type="color" data-state="' + key + '" data-field="color" value="' + esc(c.color || "#ffffff") + '">' +
+          (canGame
+            ? '<label class="inline-sw"><span class="sw"><input type="checkbox" data-state="' + key +
+              '" data-field="useGameColor"' + (c.useGameColor ? " checked" : "") +
+              '><span class="tr"></span></span>Take it from the game</label>'
+            : "") + "</div>" +
+        '<p class="hint" data-note="' + key + '"></p>' +
+        '<div class="ctrl"><span class="label">Brightness</span>' +
+          '<input type="range" min="1" max="255" value="' + c.brightness + '" data-state="' + key + '" data-field="brightness">' +
+          '<span class="val">' + Math.round((c.brightness / 255) * 100) + "%</span></div>" +
+        '<div class="ctrl"><span class="label">Speed</span>' +
+          '<input type="range" min="0" max="255" value="' + (c.speed == null ? 128 : c.speed) + '" data-state="' + key + '" data-field="speed">' +
+          '<span class="val">' + (c.speed == null ? 128 : c.speed) + "</span></div>";
+
+    return '<div class="state' + (c.enabled ? "" : " off") + '" data-card="' + key + '">' +
+      '<button class="row" data-row="' + key + '" aria-expanded="false">' +
+        '<span class="bar"></span><span class="nm">' + esc(label) + "</span>" +
+        '<span class="summary mono" data-sum="' + key + '"></span>' +
+        '<span class="chev">▶</span>' +
+      "</button>" +
+      '<div class="body">' + body +
+        '<div class="ctrl"><span class="label">Fade</span>' +
+          '<input type="range" min="0" max="10" value="' + (c.transition == null ? 2 : c.transition) + '" data-state="' + key + '" data-field="transition">' +
+          '<span class="val">' + (c.transition == null ? 2 : c.transition) + "s</span></div>" +
+        '<div class="btn-row" style="margin-top:14px;">' +
+          '<button class="btn" data-preview="' + key + '">Try it now</button>' +
+          '<label class="inline-sw"><span class="sw"><input type="checkbox" data-state="' + key +
+            '" data-field="enabled"' + (c.enabled ? " checked" : "") +
+            '><span class="tr"></span></span>React to this state</label>' +
+        "</div></div></div>";
+  }
+
+  function renderStates() {
+    el("stateRows").innerHTML = STATES.map((s) => stateRow(s[0], s[1])).join("");
+    paintAll();
+    setPreviewButtons();
+  }
+
+  function paintAll() {
+    for (const [key] of STATES) paintState(key);
+    renderPath();
+  }
+
+  function paintState(key) {
+    const card = document.querySelector('[data-card="' + key + '"]');
+    if (!card) return;
+    const c = lighting.states[key];
+    card.classList.toggle("off", !c.enabled);
+
+    const bar = card.querySelector(".bar");
+    const colour = colourFor(key);
+    if (bar) bar.style.setProperty("--state-color", colour || "");
+
+    const sum = card.querySelector('[data-sum="' + key + '"]');
+    if (sum) sum.textContent = summarise(key);
+
+    const note = card.querySelector('[data-note="' + key + '"]');
+    if (note) {
+      const fallback = c.color || "#ffffff";
+      const sw = (hex) => '<span class="swatch-inline" style="background:' + hex + '"></span>';
+      if (key !== "playing" || !c.useGameColor) {
+        note.innerHTML = "Always " + sw(fallback) + "<code>" + fallback + "</code>";
+      } else if (currentGameColor) {
+        note.innerHTML = "Now " + sw(currentGameColor) + "<code>" + currentGameColor +
+          "</code>, sampled from the cover art. Falls back to " + sw(fallback) +
+          "<code>" + fallback + "</code> for games with no usable artwork.";
+      } else {
+        note.innerHTML = "No game colour available, so " + sw(fallback) + "<code>" +
+          fallback + "</code> would be used.";
+      }
+    }
+  }
+
+  function openState(key, scroll) {
+    for (const s of document.querySelectorAll(".state")) {
+      const isTarget = s.dataset.card === key;
+      s.classList.toggle("open", isTarget);
+      const row = s.querySelector(".row");
+      if (row) row.setAttribute("aria-expanded", isTarget ? "true" : "false");
+    }
+    if (scroll) {
+      const card = document.querySelector('[data-card="' + key + '"]');
+      if (card) card.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }
+
+  el("stateRows").addEventListener("click", (ev) => {
+    const row = ev.target.closest("[data-row]");
+    if (!row) return;
+    const key = row.dataset.row;
+    const card = document.querySelector('[data-card="' + key + '"]');
+    if (card.classList.contains("open")) {
+      card.classList.remove("open");
+      row.setAttribute("aria-expanded", "false");
+    } else {
+      openState(key);
+    }
+  });
+
+  // ------------------------------------------------- effect combobox
   function renderFxList(key) {
     const list = document.querySelector('[data-fxlist="' + key + '"]');
-    const input = document.querySelector('input[data-state="' + key + '"][data-field="effect"]');
-    if (!list || !input) return;
+    if (!list) return;
     const q = (fxFilter[key] || "").trim().toLowerCase();
     const all = currentEffects();
     const matches = q ? all.filter((e) => e.toLowerCase().includes(q)) : all;
@@ -602,13 +772,11 @@
       return;
     }
     list.innerHTML =
-      '<p class="fx-count">' +
-        (q ? matches.length + " of " + all.length + " effects" : all.length + " effects") +
-      "</p>" +
+      '<p class="fx-count label">' + (q ? matches.length + " of " + all.length : all.length + " effects") + "</p>" +
       '<div class="fx-opt none" data-fx="">No effect</div>' +
       (matches.length
         ? matches.map((e) => '<div class="fx-opt" data-fx="' + esc(e) + '">' + esc(e) + "</div>").join("")
-        : '<p class="fx-empty">Nothing matches.</p>');
+        : '<p class="fx-empty">Nothing matches that.</p>');
   }
 
   function openFx(key, keepFilter) {
@@ -618,10 +786,8 @@
     const list = document.querySelector('[data-fxlist="' + key + '"]');
     const input = document.querySelector('input[data-state="' + key + '"][data-field="effect"]');
     if (!list || !input) return;
-
-    // With ~180 effects the list is always taller than the space available,
-    // so pick whichever side has more room and size it to fit -- otherwise
-    // it opens past the bottom of the window and can't be seen at all.
+    // A ~180-entry list will always exceed the space, so open toward
+    // whichever side has room and size to fit; otherwise it lands off-screen.
     const r = input.getBoundingClientRect();
     const below = window.innerHeight - r.bottom - 12;
     const above = r.top - 12;
@@ -635,264 +801,8 @@
     for (const l of document.querySelectorAll(".fx-list.open")) l.classList.remove("open");
   }
 
-  function stateBlock(key, label, dotColor) {
-    const c = lighting.states[key];
-    const isOff = key === "off";
-    // Only a running game has cover art to sample, so the option is
-    // meaningless anywhere else.
-    const canUseGameColor = key === "playing";
-    const tags = [];
-    if (canUseGameColor && c.useGameColor) tags.push("game colour");
-    if (isOff && lighting.restoreOnOff) tags.push("restore");
-
-    const body = isOff
-      ? '<div class="switch"><label class="toggle sm"><input type="checkbox" data-state="off" data-field="turnOff"' +
-          (c.turnOff !== false ? " checked" : "") + '><span class="track"></span></label>' +
-          "<span>Turn lights off when there's no snapshot to restore</span></div>"
-      : '<div class="ctrl"><span class="k">Effect</span>' +
-          '<span class="fx-wrap">' +
-            '<input type="text" autocomplete="off" data-state="' + key + '" data-field="effect" ' +
-              'placeholder="Click to browse, or type" value="' + esc(c.effect || "") + '">' +
-            '<div class="fx-list" data-fxlist="' + key + '"></div>' +
-          "</span></div>" +
-        '<div class="ctrl"><span class="k">' + (canUseGameColor && c.useGameColor ? "Fallback" : "Colour") + "</span>" +
-          '<input type="color" data-state="' + key + '" data-field="color" value="' + esc(c.color || "#ffffff") + '">' +
-          (canUseGameColor
-            ? '<span class="switch" style="margin-left:2px;"><label class="toggle sm"><input type="checkbox" data-state="' + key +
-              '" data-field="useGameColor"' + (c.useGameColor ? " checked" : "") + '><span class="track"></span></label>' +
-              "<span>use game colour</span></span>"
-            : "") +
-          "</div>" +
-        '<p class="colour-note" data-note="' + key + '"></p>' +
-        '<div class="ctrl"><span class="k">Brightness</span>' +
-          '<input type="range" min="1" max="255" value="' + c.brightness + '" data-state="' + key + '" data-field="brightness">' +
-          '<span class="val">' + Math.round((c.brightness / 255) * 100) + "%</span></div>" +
-        '<div class="ctrl"><span class="k">Speed</span>' +
-          '<input type="range" min="0" max="255" value="' + (c.speed == null ? 128 : c.speed) + '" data-state="' + key + '" data-field="speed">' +
-          '<span class="val">' + (c.speed == null ? 128 : c.speed) + "</span></div>";
-
-    return '<div class="state" data-card="' + key + '">' +
-      (isOff ? "" : '<div class="state-glow"></div>') +
-      '<div class="state-head">' +
-        '<span class="' + (key === "off" ? "dot" : "preview-dot") + '" style="background:' + dotColor + '"></span>' +
-        "<h3>" + esc(label) + "</h3>" +
-        tags.map((t) => '<span class="tag">' + t + "</span>").join("") +
-        '<label class="toggle sm"><input type="checkbox" data-state="' + key + '" data-field="enabled"' +
-          (c.enabled ? " checked" : "") + '><span class="track"></span></label>' +
-      "</div>" +
-      '<div class="state-body' + (c.enabled ? "" : " disabled") + '" data-body="' + key + '">' +
-        body +
-        '<div class="ctrl"><span class="k">Fade</span>' +
-          '<input type="range" min="0" max="10" value="' + (c.transition == null ? 2 : c.transition) + '" data-state="' + key + '" data-field="transition">' +
-          '<span class="val">' + (c.transition == null ? 2 : c.transition) + "s</span></div>" +
-        '<div><button class="secondary tiny" data-preview="' + key + '">Try it now</button></div>' +
-      "</div>" +
-      "</div>";
-  }
-
-  // A big Home Assistant can have dozens of lights, so the picker is
-  // searchable and grouped by room. Selected lights always render, even when
-  // filtered out, so it's never unclear what's currently chosen.
-  function renderSelectedChips() {
-    const box = el("selectedChips");
-    const chosen = availableLights.filter((l) => lighting.lights.includes(l.entity_id));
-    box.innerHTML = chosen.length
-      ? chosen.map((l) => '<span class="chip sel readonly">' + esc(l.name) + "</span>").join("")
-      : '<span class="picker-empty">No lights selected yet.</span>';
-    el("pickerToggle").textContent = el("picker").classList.contains("open")
-      ? "Done"
-      : (chosen.length ? "Change" : "Choose lights");
-  }
-
-  function renderLights() {
-    const box = el("lightsList");
-    if (!availableLights.length) {
-      box.innerHTML = '<span class="hint">No lights found in Home Assistant.</span>';
-      el("selCount").textContent = "";
-      renderSelectedChips();
-      return;
-    }
-
-    const q = (el("lightSearch").value || "").trim().toLowerCase();
-    const visible = availableLights.filter((l) =>
-      !q ||
-      lighting.lights.includes(l.entity_id) ||
-      l.name.toLowerCase().includes(q) ||
-      l.entity_id.toLowerCase().includes(q) ||
-      (l.area || "").toLowerCase().includes(q));
-
-    const groups = new Map();
-    for (const l of visible) {
-      const key = l.area || "Other";
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(l);
-    }
-
-    const chip = (l) =>
-      '<span class="chip' + (lighting.lights.includes(l.entity_id) ? " sel" : "") +
-      '" data-light="' + esc(l.entity_id) + '" title="' + esc(l.entity_id) + '">' +
-      esc(l.name) + "</span>";
-
-    // With only one group there's no grouping to show, so skip the heading.
-    const single = groups.size <= 1;
-    box.innerHTML = visible.length
-      ? [...groups.entries()].map(([area, lights]) =>
-          '<div class="area-group">' +
-          (single ? "" : '<p class="area-label">' + esc(area) + "</p>") +
-          '<div class="chips">' + lights.map(chip).join("") + "</div></div>").join("")
-      : '<p class="no-match">Nothing matches “' + esc(q) + '”.</p>';
-
-    const n = lighting.lights.length;
-    el("selCount").textContent = n
-      ? n + " selected"
-      : availableLights.length + " available";
-    renderSelectedChips();
-  }
-
-  function renderStates() {
-    el("stateBlocks").innerHTML = STATES.map((s) => stateBlock(s[0], s[1], s[2])).join("");
-    for (const [key] of STATES) paintState(key);
-  }
-
-  // Colour the card with whatever it will actually produce: the configured
-  // colour, or the live game colour when that's what it'll use.
-  function paintState(key) {
-    const card = document.querySelector('[data-card="' + key + '"]');
-    if (!card) return;
-    const c = lighting.states[key];
-
-    if (key === "off") {
-      card.style.removeProperty("--state-color");
-      card.classList.remove("lit", "animated");
-      return;
-    }
-
-    const fallback = c.color || "#ffffff";
-    // What the lights would actually be set to right now.
-    const useGame = key === "playing" && c.useGameColor;
-    const color = useGame ? (currentGameColor || fallback) : fallback;
-    card.style.setProperty("--state-color", color);
-    card.classList.toggle("lit", !!c.enabled);
-
-    const note = card.querySelector('[data-note="' + key + '"]');
-    if (note) {
-      const chip = (hex) => '<span class="swatch-inline" style="background:' + hex + '"></span>';
-      if (key !== "playing" || !c.useGameColor) {
-        note.innerHTML = "Always " + chip(fallback) + "<code>" + fallback + "</code>.";
-      } else if (currentGameColor) {
-        note.innerHTML =
-          "Now using " + chip(currentGameColor) + "<code>" + currentGameColor +
-          "</code> from the cover art. Falls back to " + chip(fallback) + "<code>" + fallback +
-          "</code> when a game has no usable artwork.";
-      } else {
-        note.innerHTML =
-          "No game colour right now, so " + chip(fallback) + "<code>" + fallback +
-          "</code> would be used. Set that swatch to choose the fallback.";
-      }
-    }
-
-    // 'Solid' (and no effect at all) don't move, so they shouldn't shimmer.
-    const moving = !!c.effect && c.effect !== "Solid" && !!c.enabled;
-    card.classList.toggle("animated", moving);
-    if (moving) {
-      // WLED speed is 0-255; map it to something watchable, faster = shorter.
-      const speed = c.speed == null ? 128 : c.speed;
-      card.style.setProperty("--sheen-duration", (0.9 + (255 - speed) / 255 * 4.5).toFixed(2) + "s");
-    }
-
-    const dot = card.querySelector(".preview-dot");
-    if (dot) dot.style.background = color;
-
-  }
-
-  function applyEnabledLook() {
-    // Deliberately still editable when off, so it can be set up before being
-    // switched on -- only dimmed to show it isn't currently driving anything.
-    el("lightingBody").style.opacity = lighting.enabled ? "1" : "0.55";
-  }
-
-  function readForm() {
-    lighting.enabled = el("lightingEnabled").checked;
-    lighting.restoreOnOff = el("restoreOnOff").checked;
-    for (const input of document.querySelectorAll("[data-state][data-field]")) {
-      const { state, field } = input.dataset;
-      let value;
-      if (input.type === "checkbox") value = input.checked;
-      else if (input.type === "range") value = Number(input.value);
-      else value = input.value || null;
-      lighting.states[state][field] = value;
-    }
-    return lighting;
-  }
-
-  async function saveLighting() {
-    const res = await fetch("api/lighting", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(lighting),
-    });
-    if (!res.ok) throw new Error("Save failed");
-  }
-
-  // Everything saves as it's changed. Requiring a Save press meant a toggle
-  // would silently revert on reload, which read as the toggle not working.
-  let saveTimer = null;
-  function queueSave(immediate) {
-    const note = el("saveNote");
-    clearTimeout(saveTimer);
-    const doSave = async () => {
-      try {
-        readForm();
-        await saveLighting();
-        note.className = "note ok";
-        note.textContent = "Saved.";
-        setTimeout(() => {
-          if (note.textContent === "Saved.") {
-            note.className = "note";
-            note.textContent = "Changes save automatically.";
-          }
-        }, 1600);
-      } catch (e) {
-        note.className = "note err";
-        note.textContent = e.message;
-      }
-    };
-    if (immediate) return doSave();
-    saveTimer = setTimeout(doSave, 400);
-  }
-
-  async function loadLighting() {
-    try {
-      const cfg = await (await fetch("api/lighting")).json();
-      const lightsRes = await fetch("api/lights");
-      lighting = cfg;
-      availableLights = lightsRes.ok ? await lightsRes.json() : [];
-      if (!Array.isArray(availableLights)) availableLights = [];
-      el("lightingEnabled").checked = !!lighting.enabled;
-      el("restoreOnOff").checked = !!lighting.restoreOnOff;
-      applyEnabledLook();
-      if (!lighting.lights.length) el("picker").classList.add("open");
-      renderLights();
-      renderStates();
-      el("lightingCard").style.display = "block";
-    } catch (e) {
-      // Lighting needs Home Assistant's API; if it's unreachable the rest of
-      // the panel still works, so just leave this card hidden.
-      console.warn("lighting unavailable", e);
-    }
-  }
-
-  // Light selection changes which effects are offered, but re-rendering the
-  // whole card on every input would destroy the element being interacted
-  // with. Only the effect dropdowns are rebuilt.
   function refreshEffectOptions() {
-    for (const [key] of STATES) {
-      if (key !== "off") renderFxList(key);
-    }
-    // An effect the newly-chosen light can't do would silently do nothing,
-    // so flag it rather than leaving it looking valid.
-    for (const [key] of STATES) {
-      if (key !== "off") validateEffect(key);
-    }
+    for (const [key] of STATES) if (key !== "off") { renderFxList(key); validateEffect(key); }
   }
 
   function validateEffect(key) {
@@ -902,36 +812,17 @@
     const known = currentEffects();
     const bad = value && known.length && !known.includes(value);
     input.style.borderColor = bad ? "var(--bad)" : "";
-    const existing = input.closest(".ctrl").nextElementSibling;
-    if (existing && existing.classList.contains("effect-warn")) existing.remove();
+    const ctrl = input.closest(".ctrl");
+    const existing = ctrl.nextElementSibling;
+    if (existing && existing.classList.contains("fx-warn")) existing.remove();
     if (bad) {
-      const warn = document.createElement("p");
-      warn.className = "colour-note effect-warn";
-      warn.style.color = "var(--bad)";
-      warn.textContent = "The selected light has no effect called " + value + ".";
-      input.closest(".ctrl").after(warn);
+      const p = document.createElement("p");
+      p.className = "hint fx-warn";
+      p.style.color = "var(--bad)";
+      p.textContent = "This light has no effect called " + value + ".";
+      ctrl.after(p);
     }
   }
-
-  el("pickerToggle").addEventListener("click", () => {
-    el("picker").classList.toggle("open");
-    renderLights();
-  });
-
-  el("lightsList").addEventListener("click", (ev) => {
-    const chip = ev.target.closest("[data-light]");
-    if (!chip || !lighting) return;
-    const id = chip.dataset.light;
-    const i = lighting.lights.indexOf(id);
-    if (i === -1) lighting.lights.push(id); else lighting.lights.splice(i, 1);
-    chip.classList.toggle("sel");
-    refreshEffectOptions();
-    renderSelectedChips();
-    queueSave();
-    el("selCount").textContent = lighting.lights.length
-      ? lighting.lights.length + " selected"
-      : availableLights.length + " available";
-  });
 
   document.addEventListener("focusin", (ev) => {
     const t = ev.target;
@@ -952,13 +843,10 @@
       queueSave();
       return;
     }
-    if (!ev.target.closest(".fx-wrap")) closeAllFx();
+    if (!ev.target.closest(".fx")) closeAllFx();
   });
 
-  document.addEventListener("keydown", (ev) => {
-    if (ev.key === "Escape") closeAllFx();
-  });
-
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeAllFx(); });
   for (const evt of ["scroll", "resize"]) {
     window.addEventListener(evt, () => {
       const open = document.querySelector(".fx-list.open");
@@ -966,9 +854,50 @@
     }, { passive: true });
   }
 
-  el("lightSearch").addEventListener("input", () => {
-    if (lighting) renderLights();
-  });
+  // --------------------------------------------------------- persistence
+  function readForm() {
+    lighting.enabled = el("lightingEnabled").checked;
+    lighting.restoreOnOff = el("restoreOnOff").checked;
+    for (const input of document.querySelectorAll("[data-state][data-field]")) {
+      const { state, field } = input.dataset;
+      let v;
+      if (input.type === "checkbox") v = input.checked;
+      else if (input.type === "range") v = Number(input.value);
+      else v = input.value || null;
+      lighting.states[state][field] = v;
+    }
+    return lighting;
+  }
+
+  async function saveLighting() {
+    const res = await fetch("api/lighting", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(lighting),
+    });
+    if (!res.ok) throw new Error("Could not save");
+  }
+
+  // Everything saves as it changes. A Save button meant changes silently
+  // reverted on reload, which read as the controls not working.
+  let saveTimer = null;
+  function queueSave(immediate) {
+    const note = el("saveNote");
+    clearTimeout(saveTimer);
+    const run = async () => {
+      try {
+        readForm();
+        await saveLighting();
+        note.className = "note ok";
+        note.textContent = "Saved";
+        setTimeout(() => {
+          if (note.textContent === "Saved") { note.className = "note"; note.textContent = ""; }
+        }, 1500);
+      } catch (e) {
+        note.className = "note err"; note.textContent = e.message;
+      }
+    };
+    return immediate ? run() : (saveTimer = setTimeout(run, 400));
+  }
 
   el("lightingEnabled").addEventListener("change", () => {
     if (!lighting) return;
@@ -980,108 +909,89 @@
   el("restoreOnOff").addEventListener("change", () => {
     if (!lighting) return;
     lighting.restoreOnOff = el("restoreOnOff").checked;
-    renderStates(); // the 'restore' tag on the off card depends on this
+    paintAll();
     queueSave();
   });
+
+  function applyEnabledLook() {
+    // Still editable when off, so it can be set up before being switched on.
+    el("lightingBody").style.opacity = lighting.enabled ? "1" : "0.55";
+    el("stateRows").style.opacity = lighting.enabled ? "1" : "0.55";
+  }
 
   document.addEventListener("input", (ev) => {
     const t = ev.target;
     if (!lighting || !t.dataset || !t.dataset.state) return;
 
     if (t.type === "range") {
-      const val = t.parentElement.querySelector(".val");
+      const val = t.closest(".ctrl").querySelector(".val");
       if (val) {
         if (t.dataset.field === "brightness") val.textContent = Math.round((t.value / 255) * 100) + "%";
         else if (t.dataset.field === "transition") val.textContent = t.value + "s";
         else val.textContent = t.value;
       }
     }
-    if (t.dataset.field === "enabled") {
-      const body = document.querySelector('[data-body="' + t.dataset.state + '"]');
-      if (body) body.classList.toggle("disabled", !t.checked);
-    }
-    if (t.dataset.field === "useGameColor") {
-      // The swatch stays editable either way -- with the toggle on it's the
-      // fallback rather than the colour, so just relabel it.
-      const label = t.closest(".state-body").querySelector(".ctrl .k + input[type=color]");
-      if (label && label.previousElementSibling) {
-        label.previousElementSibling.textContent = t.checked ? "Fallback" : "Colour";
-      }
-      const card = document.querySelector('[data-card="' + t.dataset.state + '"]');
-      const tagHost = card && card.querySelector(".state-head");
-      if (tagHost) {
-        const existing = tagHost.querySelector(".tag");
-        if (t.checked && !existing) {
-          const tag = document.createElement("span");
-          tag.className = "tag";
-          tag.textContent = "game colour";
-          tagHost.insertBefore(tag, tagHost.querySelector(".toggle"));
-        } else if (!t.checked && existing) {
-          existing.remove();
-        }
-      }
-    }
-
     if (t.dataset.field === "effect") {
-      fxFilter[t.dataset.state] = t.value; // now they're actually typing
+      fxFilter[t.dataset.state] = t.value;
       validateEffect(t.dataset.state);
       openFx(t.dataset.state, true);
     }
 
-    // keep the card's preview honest as settings change
     const c = lighting.states[t.dataset.state];
     if (t.type === "checkbox") c[t.dataset.field] = t.checked;
     else if (t.type === "range") c[t.dataset.field] = Number(t.value);
     else c[t.dataset.field] = t.value || null;
+
+    if (t.dataset.field === "useGameColor") {
+      const lbl = t.closest(".ctrl").querySelector(".label");
+      if (lbl) lbl.textContent = t.checked ? "Fallback" : "Colour";
+    }
     paintState(t.dataset.state);
+    renderPath();
     queueSave();
   });
 
   document.addEventListener("change", (ev) => {
     const t = ev.target;
     if (!lighting || !t.dataset || !t.dataset.state) return;
-    if (t.type === "color" || t.dataset.field === "effect") {
-      lighting.states[t.dataset.state][t.dataset.field] = t.value || null;
+    if (t.type === "color") {
+      lighting.states[t.dataset.state].color = t.value;
       paintState(t.dataset.state);
+      renderPath();
       queueSave();
     }
   });
 
-  let previewingState = null;
+  // ------------------------------------------------------------ preview
+  let previewing = null;
 
   function setPreviewButtons() {
     for (const b of document.querySelectorAll("[data-preview]")) {
-      const active = b.dataset.preview === previewingState;
-      b.textContent = active ? "Stop & restore" : "Try it now";
-      b.classList.toggle("danger", active);
-      b.classList.toggle("secondary", !active);
+      const active = b.dataset.preview === previewing;
+      b.textContent = active ? "Stop and restore" : "Try it now";
+      b.classList.toggle("stop", active);
     }
   }
 
   document.addEventListener("click", async (ev) => {
     const btn = ev.target.closest("[data-preview]");
     if (!btn || !lighting) return;
+    ev.stopPropagation();
     const note = el("saveNote");
     const key = btn.dataset.preview;
 
-    // Same button stops the preview it started -- putting that control at the
-    // bottom of the card meant it was never seen.
-    if (previewingState === key) {
-      note.className = "note"; note.textContent = "Restoring…";
+    if (previewing === key) {
+      note.className = "note"; note.textContent = "Restoring";
       try {
-        const res = await fetch("api/lighting/preview/stop", { method: "POST" });
-        const data = await res.json();
-        previewingState = null;
-        setPreviewButtons();
+        const data = await (await fetch("api/lighting/preview/stop", { method: "POST" })).json();
+        previewing = null; setPreviewButtons();
         note.className = "note ok";
-        note.textContent = data.restored ? "Lights restored." : "Nothing to restore.";
-      } catch (e) {
-        note.className = "note err"; note.textContent = e.message;
-      }
+        note.textContent = data.restored ? "Restored" : "Nothing to restore";
+      } catch (e) { note.className = "note err"; note.textContent = e.message; }
       return;
     }
 
-    note.className = "note"; note.textContent = "Applying…";
+    note.className = "note"; note.textContent = "Applying";
     try {
       readForm();
       await saveLighting();
@@ -1090,20 +1000,40 @@
         body: JSON.stringify({ state: key }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      previewingState = key;
-      setPreviewButtons();
-      note.className = "note ok";
-      note.textContent = "Applied — press Stop & restore, or wait 45s.";
-      // The server reverts on its own after 45s; match that here so the
-      // button doesn't keep claiming a preview that already ended.
+      if (!res.ok) throw new Error(data.error || "Could not apply");
+      previewing = key; setPreviewButtons();
+      note.className = "note ok"; note.textContent = "Running";
+      // The bridge reverts on its own after 45s; match that here so the
+      // button can't keep claiming a preview that already ended.
       setTimeout(() => {
-        if (previewingState === key) { previewingState = null; setPreviewButtons(); }
+        if (previewing === key) { previewing = null; setPreviewButtons(); }
       }, 45000);
     } catch (e) {
       note.className = "note err"; note.textContent = e.message;
     }
   });
+
+  // --------------------------------------------------------------- load
+  async function loadLighting() {
+    try {
+      const cfg = await (await fetch("api/lighting")).json();
+      const lightsRes = await fetch("api/lights");
+      lighting = cfg;
+      availableLights = lightsRes.ok ? await lightsRes.json() : [];
+      if (!Array.isArray(availableLights)) availableLights = [];
+      el("lightingEnabled").checked = !!lighting.enabled;
+      el("restoreOnOff").checked = !!lighting.restoreOnOff;
+      applyEnabledLook();
+      if (!lighting.lights.length) el("picker").classList.add("open");
+      renderLights();
+      renderStates();
+      el("lightingCard").style.display = "block";
+    } catch (e) {
+      // Lighting needs Home Assistant's API. Without it the rest of the panel
+      // still works, so leave the section hidden.
+      console.warn("lighting unavailable", e);
+    }
+  }
 
   refreshStatus();
   loadLighting();
