@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.12.1
+
+- Switching lighting off now also works while a "Try it now" preview is
+  running. Reconciling deliberately stood aside for a preview, so if one
+  happened to be active the main toggle did nothing at all -- which is
+  indistinguishable from a broken toggle. Turning lighting off now ends the
+  preview and restores the lights.
+- The log now records what a change decided ("Lighting released, lights
+  turned off"), so this is diagnosable from the add-on log.
+
 ## 2.12.0
 
 - **Changing a setting now acts on the lights straight away.** Config was
