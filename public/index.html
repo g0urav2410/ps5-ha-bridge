@@ -242,12 +242,17 @@
   .swatch-btn[aria-expanded="true"] { outline: 2px solid var(--accent); outline-offset: 1px; }
   .cpick { display: none; margin: 2px 0 14px; }
   .cpick.open { display: block; }
-  .cpick-row { display: flex; gap: 16px; align-items: center; }
+  /* Side by side squeezed the wheel to 148px, where one pixel is over two
+     degrees of hue -- far coarser than WLED's own control. Stacking gives it
+     the full width of the panel. */
+  .cpick-row { display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
   .wheel {
-    position: relative; width: 148px; height: 148px; border-radius: 50%; flex: none;
+    position: relative; width: 100%; max-width: 240px; aspect-ratio: 1;
+    margin: 0 auto; border-radius: 50%; flex: none;
     touch-action: none; cursor: crosshair;
     box-shadow: inset 0 0 0 1px var(--line);
   }
+  .wheel:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .wheel canvas { display: block; width: 100%; height: 100%; border-radius: 50%; }
   /* the shade bar dims the wheel too, so it always shows the colour you get */
   .wheel .shade { position: absolute; inset: 0; border-radius: 50%; background: #000; opacity: 0; pointer-events: none; }
@@ -256,7 +261,7 @@
     border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.65);
     transform: translate(-50%,-50%); pointer-events: none;
   }
-  .cpick-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 13px; }
+  .cpick-side { min-width: 0; display: flex; flex-direction: column; gap: 13px; }
   .vbar {
     height: 15px; border-radius: 8px; position: relative; cursor: pointer;
     touch-action: none; box-shadow: inset 0 0 0 1px var(--line); margin-top: 7px;
@@ -282,10 +287,7 @@
     color: var(--text); border-radius: 5px; padding: 5px 4px;
     font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.73rem;
   }
-  @media (max-width: 420px) {
-    .cpick-row { flex-direction: column; align-items: stretch; }
-    .wheel { width: 100%; max-width: 200px; height: 200px; margin: 0 auto; }
-  }
+  .fine { font-size: 0.72rem; color: var(--faint); margin: 6px 0 0; text-align: center; }
   input[type="range"] {
     flex: 1; min-width: 0; -webkit-appearance: none; appearance: none;
     height: 2px; background: var(--line); border-radius: 2px; outline: none;
@@ -945,7 +947,10 @@
     // swatch nothing else can offer.
     const quick = (currentGameColor ? [currentGameColor] : []).concat(QUICK);
     return '<div class="cpick-row">' +
-        '<div class="wheel" data-wheel="' + key + '"><canvas></canvas><div class="shade"></div><span class="dot"></span></div>' +
+        '<div class="wheel" data-wheel="' + key + '" tabindex="0" role="slider" ' +
+          'aria-label="Hue and saturation"><canvas></canvas><div class="shade"></div>' +
+          '<span class="dot"></span></div>' +
+        '<p class="fine">Arrow keys nudge by one degree &middot; hold Shift for ten</p>' +
         '<div class="cpick-side">' +
           '<div><span class="label">Shade</span>' +
             '<div class="vbar" data-vbar="' + key + '"><span class="knob"></span></div></div>' +
@@ -1098,6 +1103,24 @@
     dragTarget.node.setPointerCapture(ev.pointerId);
     applyDrag(ev);
   });
+  // Dragging on a wheel this size still lands within a degree or two; the
+  // arrow keys are there for when that isn't close enough.
+  document.addEventListener("keydown", (ev) => {
+    const wheel = ev.target.closest && ev.target.closest("[data-wheel]");
+    if (!wheel) return;
+    const key = wheel.dataset.wheel;
+    const p = pickerState[key];
+    if (!p) return;
+    const step = ev.shiftKey ? 10 : 1;
+    let handled = true;
+    if (ev.key === "ArrowRight") p.h = (p.h + step) % 360;
+    else if (ev.key === "ArrowLeft") p.h = (p.h - step + 360) % 360;
+    else if (ev.key === "ArrowUp") p.s = Math.min(1, p.s + step / 100);
+    else if (ev.key === "ArrowDown") p.s = Math.max(0, p.s - step / 100);
+    else handled = false;
+    if (handled) { ev.preventDefault(); paintPicker(key); queueSave(); }
+  });
+
   document.addEventListener("pointermove", (ev) => { if (dragTarget) applyDrag(ev); });
   document.addEventListener("pointerup", () => {
     if (dragTarget) { queueSave(); dragTarget = null; }

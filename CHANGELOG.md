@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.1.2
+
+- The colour wheel is much finer to work with. It was squeezed to 148px
+  beside the controls, where one pixel covered over two degrees of hue --
+  far coarser than WLED's own control. The picker is now stacked so the
+  wheel gets the panel's full width (240px, drawn at 480px on a retina
+  screen), which is about 0.5 degrees per pixel: five times finer.
+- Arrow keys nudge the wheel by one degree, or ten with Shift, for when
+  dragging still isn't exact enough. Hex and R/G/B entry remain for setting
+  an exact value outright.
+
 ## 3.1.1
 
 - Fixed the colour wheel being a quarter turn out. It was painted with a CSS
