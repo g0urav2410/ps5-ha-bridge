@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.1.0
+
+- Replaced the browser's colour input with a picker shaped like WLED's own
+  controls: a hue/saturation wheel, a shade bar, quick colours, and hex or
+  R/G/B entry. The native control handed you the operating system's colour
+  dialog, which knows nothing about LED colour and drops you out of the
+  panel entirely.
+- The first quick colour is the live colour sampled from the running game,
+  ringed to mark it. It's the one swatch nothing else can offer.
+- The wheel dims along with the shade bar, so it always shows the colour
+  you would actually get rather than a full-brightness version of it.
+- The bar is called "shade", not "brightness", because the row already has
+  a Brightness slider and they do different things: shade changes the
+  colour itself, brightness drives the light's output.
+
 ## 3.0.0
 
 Redesigned the panel around one idea: this is a tool for configuring

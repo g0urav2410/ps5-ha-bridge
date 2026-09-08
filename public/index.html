@@ -232,9 +232,63 @@
     min-width: 0; width: 100%;
   }
   input[type="text"]::placeholder { color: var(--faint); }
-  input[type="color"] {
-    width: 34px; height: 26px; padding: 2px; cursor: pointer; flex: none;
-    background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px;
+  /* The OS colour dialog is the wrong tool here: it doesn't know these are
+     LED colours, and it drops you out of the panel. This is the same shape
+     as WLED's own control, so it's already familiar. */
+  .swatch-btn {
+    width: 38px; height: 26px; padding: 0; flex: none; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 5px;
+  }
+  .swatch-btn[aria-expanded="true"] { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .cpick { display: none; margin: 2px 0 14px; }
+  .cpick.open { display: block; }
+  .cpick-row { display: flex; gap: 16px; align-items: center; }
+  .wheel {
+    position: relative; width: 148px; height: 148px; border-radius: 50%; flex: none;
+    touch-action: none; cursor: crosshair;
+    background:
+      radial-gradient(circle closest-side, #fff, rgba(255,255,255,0) 72%),
+      conic-gradient(from 90deg,
+        #ff0000,#ff8000,#ffff00,#80ff00,#00ff00,#00ff80,
+        #00ffff,#0080ff,#0000ff,#8000ff,#ff00ff,#ff0080,#ff0000);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  /* the shade bar dims the wheel too, so it always shows the colour you get */
+  .wheel .shade { position: absolute; inset: 0; border-radius: 50%; background: #000; opacity: 0; pointer-events: none; }
+  .wheel .dot {
+    position: absolute; width: 15px; height: 15px; border-radius: 50%;
+    border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.65);
+    transform: translate(-50%,-50%); pointer-events: none;
+  }
+  .cpick-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 13px; }
+  .vbar {
+    height: 15px; border-radius: 8px; position: relative; cursor: pointer;
+    touch-action: none; box-shadow: inset 0 0 0 1px var(--line); margin-top: 7px;
+  }
+  .vbar .knob {
+    position: absolute; top: 50%; width: 13px; height: 21px; border-radius: 4px;
+    background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.55);
+    transform: translate(-50%,-50%); pointer-events: none;
+  }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+  .presets button { width: 23px; height: 23px; border-radius: 50%; border: 1px solid var(--line); cursor: pointer; padding: 0; }
+  .presets button[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .presets button.game { box-shadow: 0 0 0 1px var(--accent); border-color: var(--accent); }
+  .cpick-out { display: flex; align-items: center; gap: 8px; margin-top: 13px; }
+  .cpick-out .hex {
+    background: var(--surface-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 6px; padding: 6px 9px; width: 96px; text-transform: lowercase;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.78rem;
+  }
+  .cpick-out .rgb { display: flex; gap: 5px; }
+  .cpick-out .rgb input {
+    width: 46px; text-align: center; background: var(--surface-2); border: 1px solid var(--line);
+    color: var(--text); border-radius: 5px; padding: 5px 4px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.73rem;
+  }
+  @media (max-width: 420px) {
+    .cpick-row { flex-direction: column; align-items: stretch; }
+    .wheel { width: 100%; max-width: 200px; height: 200px; margin: 0 auto; }
   }
   input[type="range"] {
     flex: 1; min-width: 0; -webkit-appearance: none; appearance: none;
@@ -660,12 +714,14 @@
             'placeholder="Click to browse" value="' + esc(c.effect || "") + '">' +
             '<div class="fx-list" data-fxlist="' + key + '"></div></span></div>' +
         '<div class="ctrl"><span class="label">' + (canGame && c.useGameColor ? "Fallback" : "Colour") + "</span>" +
-          '<input type="color" data-state="' + key + '" data-field="color" value="' + esc(c.color || "#ffffff") + '">' +
+          '<button class="swatch-btn" data-swatch="' + key + '" aria-expanded="false" ' +
+            'aria-label="Choose colour" style="background:' + esc(c.color || "#ffffff") + '"></button>' +
           (canGame
             ? '<label class="inline-sw"><span class="sw"><input type="checkbox" data-state="' + key +
               '" data-field="useGameColor"' + (c.useGameColor ? " checked" : "") +
               '><span class="tr"></span></span>Take it from the game</label>'
             : "") + "</div>" +
+        '<div class="cpick" data-cpick="' + key + '"></div>' +
         '<p class="hint" data-note="' + key + '"></p>' +
         '<div class="ctrl"><span class="label">Brightness</span>' +
           '<input type="range" min="1" max="255" value="' + c.brightness + '" data-state="' + key + '" data-field="brightness">' +
@@ -754,6 +810,7 @@
     if (card.classList.contains("open")) {
       card.classList.remove("open");
       row.setAttribute("aria-expanded", "false");
+      closePickers();
     } else {
       openState(key);
     }
@@ -854,11 +911,218 @@
     }, { passive: true });
   }
 
+
+  // ---------------------------------------------------- colour picker
+  // Shaped like WLED's own control -- wheel for hue and saturation, a bar
+  // for shade, quick colours underneath -- so it's already familiar. The
+  // bar is called "shade" rather than "brightness" because the row already
+  // has a Brightness slider, and these are different things: this one
+  // changes the colour itself, that one drives the light's output.
+  function hsvToRgb(h, s, v) {
+    const f = (n) => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+    return [f(5), f(3), f(1)].map((x) => Math.round(x * 255));
+  }
+  const rgbToHex = ([r, g, b]) => "#" + [r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  function rgbToHsv(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    let h = 0;
+    if (d) h = mx === r ? 60 * (((g - b) / d) % 6) : mx === g ? 60 * ((b - r) / d + 2) : 60 * ((r - g) / d + 4);
+    if (h < 0) h += 360;
+    return [h, mx ? d / mx : 0, mx];
+  }
+  function hexToRgb(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  const QUICK = ["#ffc18d", "#ff0000", "#ff8c00", "#ffd60a", "#34c759",
+                 "#30d5c8", "#2b8fff", "#7c5cff", "#ff2d95", "#ffffff"];
+
+  const pickerState = {}; // key -> {h,s,v}
+  let openPicker = null;
+
+  function pickerMarkup(key) {
+    // The game colour leads the quick colours when we have one; it's the
+    // swatch nothing else can offer.
+    const quick = (currentGameColor ? [currentGameColor] : []).concat(QUICK);
+    return '<div class="cpick-row">' +
+        '<div class="wheel" data-wheel="' + key + '"><div class="shade"></div><span class="dot"></span></div>' +
+        '<div class="cpick-side">' +
+          '<div><span class="label">Shade</span>' +
+            '<div class="vbar" data-vbar="' + key + '"><span class="knob"></span></div></div>' +
+          '<div><span class="label">Quick colours</span>' +
+            '<div class="presets" data-presets="' + key + '">' +
+              quick.map((c, i) =>
+                '<button data-quick="' + esc(c) + '" style="background:' + esc(c) + '"' +
+                (i === 0 && currentGameColor ? ' class="game" title="Colour of the game that is running"' : ' title="' + esc(c) + '"') +
+                "></button>").join("") +
+            "</div></div>" +
+        "</div></div>" +
+      '<div class="cpick-out">' +
+        '<input class="hex" data-hex="' + key + '" aria-label="Hex colour">' +
+        '<div class="rgb">' +
+          '<input data-rgb="' + key + '" data-ch="0" inputmode="numeric" aria-label="Red">' +
+          '<input data-rgb="' + key + '" data-ch="1" inputmode="numeric" aria-label="Green">' +
+          '<input data-rgb="' + key + '" data-ch="2" inputmode="numeric" aria-label="Blue">' +
+        "</div></div>";
+  }
+
+  function paintPicker(key) {
+    const box = document.querySelector('[data-cpick="' + key + '"]');
+    if (!box || !box.classList.contains("open")) return;
+    const p = pickerState[key];
+    const rgb = hsvToRgb(p.h, p.s, p.v);
+    const hex = rgbToHex(rgb);
+
+    const a = (p.h - 90) * Math.PI / 180;
+    const dot = box.querySelector(".dot");
+    dot.style.left = (50 + Math.cos(a) * p.s * 50) + "%";
+    dot.style.top = (50 + Math.sin(a) * p.s * 50) + "%";
+    dot.style.background = hex;
+    box.querySelector(".shade").style.opacity = String(1 - p.v);
+
+    const vbar = box.querySelector(".vbar");
+    vbar.style.background = "linear-gradient(90deg, #000, " + rgbToHex(hsvToRgb(p.h, p.s, 1)) + ")";
+    vbar.querySelector(".knob").style.left = (p.v * 100) + "%";
+
+    const hexIn = box.querySelector("[data-hex]");
+    if (document.activeElement !== hexIn) hexIn.value = hex;
+    for (const inp of box.querySelectorAll("[data-rgb]")) {
+      if (document.activeElement !== inp) inp.value = rgb[Number(inp.dataset.ch)];
+    }
+    for (const b of box.querySelectorAll("[data-quick]")) {
+      b.setAttribute("aria-pressed", b.dataset.quick.toLowerCase() === hex.toLowerCase());
+    }
+
+    const swatch = document.querySelector('[data-swatch="' + key + '"]');
+    if (swatch) swatch.style.background = hex;
+
+    lighting.states[key].color = hex;
+    paintState(key);
+    renderPath();
+  }
+
+  function showPicker(key) {
+    closePickers(key);
+    const box = document.querySelector('[data-cpick="' + key + '"]');
+    if (!box) return;
+    const rgb = hexToRgb(lighting.states[key].color) || [255, 255, 255];
+    const [h, s, v] = rgbToHsv(...rgb);
+    pickerState[key] = { h, s, v };
+    box.innerHTML = pickerMarkup(key);
+    box.classList.add("open");
+    document.querySelector('[data-swatch="' + key + '"]').setAttribute("aria-expanded", "true");
+    openPicker = key;
+    paintPicker(key);
+  }
+
+  function closePickers(except) {
+    for (const box of document.querySelectorAll(".cpick.open")) {
+      if (box.dataset.cpick === except) continue;
+      box.classList.remove("open");
+      const sw = document.querySelector('[data-swatch="' + box.dataset.cpick + '"]');
+      if (sw) sw.setAttribute("aria-expanded", "false");
+    }
+    if (except == null) openPicker = null;
+  }
+
+  document.addEventListener("click", (ev) => {
+    const sw = ev.target.closest("[data-swatch]");
+    if (sw) {
+      ev.stopPropagation();
+      const key = sw.dataset.swatch;
+      if (openPicker === key) { closePickers(); }
+      else { showPicker(key); }
+      return;
+    }
+    const quick = ev.target.closest("[data-quick]");
+    if (quick) {
+      const key = quick.closest(".cpick").dataset.cpick;
+      const rgb = hexToRgb(quick.dataset.quick);
+      if (rgb) {
+        const [h, s, v] = rgbToHsv(...rgb);
+        pickerState[key] = { h, s, v };
+        paintPicker(key);
+        queueSave();
+      }
+      return;
+    }
+    if (!ev.target.closest(".cpick")) closePickers();
+  });
+
+  function pointerFraction(e, box) {
+    const r = box.getBoundingClientRect();
+    return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height, r];
+  }
+
+  let dragTarget = null;
+  document.addEventListener("pointerdown", (ev) => {
+    const wheel = ev.target.closest("[data-wheel]");
+    const vbar = ev.target.closest("[data-vbar]");
+    if (wheel) { dragTarget = { kind: "wheel", key: wheel.dataset.wheel, node: wheel }; }
+    else if (vbar) { dragTarget = { kind: "vbar", key: vbar.dataset.vbar, node: vbar }; }
+    else return;
+    dragTarget.node.setPointerCapture(ev.pointerId);
+    applyDrag(ev);
+  });
+  document.addEventListener("pointermove", (ev) => { if (dragTarget) applyDrag(ev); });
+  document.addEventListener("pointerup", () => {
+    if (dragTarget) { queueSave(); dragTarget = null; }
+  });
+
+  function applyDrag(ev) {
+    const { kind, key, node } = dragTarget;
+    const p = pickerState[key];
+    if (kind === "wheel") {
+      const r = node.getBoundingClientRect();
+      const dx = ev.clientX - (r.left + r.width / 2);
+      const dy = ev.clientY - (r.top + r.height / 2);
+      p.s = Math.min(1, Math.sqrt(dx * dx + dy * dy) / (r.width / 2));
+      let ang = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+      if (ang < 0) ang += 360;
+      p.h = ang;
+    } else {
+      const [fx] = pointerFraction(ev, node);
+      p.v = Math.min(1, Math.max(0, fx));
+    }
+    paintPicker(key);
+  }
+
+  document.addEventListener("input", (ev) => {
+    const hexIn = ev.target.closest("[data-hex]");
+    if (hexIn) {
+      const key = hexIn.dataset.hex;
+      const val = hexIn.value.trim();
+      if (/^#?[0-9a-f]{6}$/i.test(val)) {
+        const rgb = hexToRgb(val.startsWith("#") ? val : "#" + val);
+        const [h, s, v] = rgbToHsv(...rgb);
+        pickerState[key] = { h, s, v };
+        paintPicker(key);
+        queueSave();
+      }
+      return;
+    }
+    const rgbIn = ev.target.closest("[data-rgb]");
+    if (rgbIn) {
+      const key = rgbIn.dataset.rgb;
+      const box = rgbIn.closest(".cpick");
+      const rgb = [...box.querySelectorAll("[data-rgb]")]
+        .map((i) => Math.min(255, Math.max(0, Number(i.value) || 0)));
+      const [h, s, v] = rgbToHsv(...rgb);
+      pickerState[key] = { h, s, v };
+      paintPicker(key);
+      queueSave();
+    }
+  });
+
   // --------------------------------------------------------- persistence
   function readForm() {
     lighting.enabled = el("lightingEnabled").checked;
     lighting.restoreOnOff = el("restoreOnOff").checked;
-    for (const input of document.querySelectorAll("[data-state][data-field]")) {
+    for (const input of document.querySelectorAll("input[data-state][data-field]")) {
       const { state, field } = input.dataset;
       let v;
       if (input.type === "checkbox") v = input.checked;
@@ -949,17 +1213,6 @@
     paintState(t.dataset.state);
     renderPath();
     queueSave();
-  });
-
-  document.addEventListener("change", (ev) => {
-    const t = ev.target;
-    if (!lighting || !t.dataset || !t.dataset.state) return;
-    if (t.type === "color") {
-      lighting.states[t.dataset.state].color = t.value;
-      paintState(t.dataset.state);
-      renderPath();
-      queueSave();
-    }
   });
 
   // ------------------------------------------------------------ preview

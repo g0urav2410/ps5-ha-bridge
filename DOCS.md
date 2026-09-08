@@ -105,7 +105,7 @@ configure each state:
 | Setting | Notes |
 |---|---|
 | Effect | Typeahead over the light's own effect list. Leave blank for none. Only meaningful for lights that have effects (WLED does). |
-| Colour | A fixed colour. On **Playing a game** only, **use game colour** takes it from the running game's cover art instead, and the swatch becomes the fallback for games with no usable artwork. |
+| Colour | A fixed colour, chosen on a WLED-style wheel with a shade bar, quick colours (including the running game's own colour) and hex or R/G/B entry. On **Playing a game** only, **use game colour** takes it from the running game's cover art instead, and the swatch becomes the fallback for games with no usable artwork. |
 | Brightness | 0-255. |
 | Effect speed | Only applied when a matching `number.<light>_speed` entity exists, which is how WLED exposes it. |
 | Fade | Transition time in seconds. |
