@@ -246,13 +246,9 @@
   .wheel {
     position: relative; width: 148px; height: 148px; border-radius: 50%; flex: none;
     touch-action: none; cursor: crosshair;
-    background:
-      radial-gradient(circle closest-side, #fff, rgba(255,255,255,0) 72%),
-      conic-gradient(from 90deg,
-        #ff0000,#ff8000,#ffff00,#80ff00,#00ff00,#00ff80,
-        #00ffff,#0080ff,#0000ff,#8000ff,#ff00ff,#ff0080,#ff0000);
     box-shadow: inset 0 0 0 1px var(--line);
   }
+  .wheel canvas { display: block; width: 100%; height: 100%; border-radius: 50%; }
   /* the shade bar dims the wheel too, so it always shows the colour you get */
   .wheel .shade { position: absolute; inset: 0; border-radius: 50%; background: #000; opacity: 0; pointer-events: none; }
   .wheel .dot {
@@ -949,7 +945,7 @@
     // swatch nothing else can offer.
     const quick = (currentGameColor ? [currentGameColor] : []).concat(QUICK);
     return '<div class="cpick-row">' +
-        '<div class="wheel" data-wheel="' + key + '"><div class="shade"></div><span class="dot"></span></div>' +
+        '<div class="wheel" data-wheel="' + key + '"><canvas></canvas><div class="shade"></div><span class="dot"></span></div>' +
         '<div class="cpick-side">' +
           '<div><span class="label">Shade</span>' +
             '<div class="vbar" data-vbar="' + key + '"><span class="knob"></span></div></div>' +
@@ -970,6 +966,39 @@
         "</div></div>";
   }
 
+  // Painted with the same mapping the hit-test uses: hue from the angle
+  // around the centre, saturation from the distance out. Drawing it rather
+  // than using a CSS gradient is what guarantees the two agree.
+  function drawWheel(wheelEl) {
+    const canvas = wheelEl.querySelector("canvas");
+    const size = wheelEl.clientWidth || 148;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const px = Math.round(size * dpr);
+    if (canvas.width === px && canvas.dataset.drawn === "1") return;
+    canvas.width = px; canvas.height = px;
+
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(px, px);
+    const data = img.data;
+    const r = px / 2;
+    for (let y = 0; y < px; y++) {
+      for (let x = 0; x < px; x++) {
+        const dx = x - r + 0.5, dy = y - r + 0.5;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const i = (y * px + x) * 4;
+        if (dist > r) { data[i + 3] = 0; continue; }
+        let ang = Math.atan2(dy, dx) * 180 / Math.PI;
+        if (ang < 0) ang += 360;
+        const [rr, gg, bb] = hsvToRgb(ang, Math.min(1, dist / r), 1);
+        data[i] = rr; data[i + 1] = gg; data[i + 2] = bb;
+        // feather the rim so it doesn't look jagged
+        data[i + 3] = dist > r - 1 ? Math.round(255 * (r - dist)) : 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    canvas.dataset.drawn = "1";
+  }
+
   function paintPicker(key) {
     const box = document.querySelector('[data-cpick="' + key + '"]');
     if (!box || !box.classList.contains("open")) return;
@@ -977,7 +1006,7 @@
     const rgb = hsvToRgb(p.h, p.s, p.v);
     const hex = rgbToHex(rgb);
 
-    const a = (p.h - 90) * Math.PI / 180;
+    const a = p.h * Math.PI / 180;
     const dot = box.querySelector(".dot");
     dot.style.left = (50 + Math.cos(a) * p.s * 50) + "%";
     dot.style.top = (50 + Math.sin(a) * p.s * 50) + "%";
@@ -1016,6 +1045,7 @@
     box.classList.add("open");
     document.querySelector('[data-swatch="' + key + '"]').setAttribute("aria-expanded", "true");
     openPicker = key;
+    drawWheel(box.querySelector(".wheel"));
     paintPicker(key);
   }
 
@@ -1081,7 +1111,7 @@
       const dx = ev.clientX - (r.left + r.width / 2);
       const dy = ev.clientY - (r.top + r.height / 2);
       p.s = Math.min(1, Math.sqrt(dx * dx + dy * dy) / (r.width / 2));
-      let ang = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+      let ang = Math.atan2(dy, dx) * 180 / Math.PI;
       if (ang < 0) ang += 360;
       p.h = ang;
     } else {

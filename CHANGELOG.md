@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.1.1
+
+- Fixed the colour wheel being a quarter turn out. It was painted with a CSS
+  `conic-gradient(from 90deg, ...)`, which puts red at 3 o'clock, while the
+  hit-testing and the marker both assumed red at 12 -- so the colour you got
+  was 90 degrees away from the one you pressed.
+
+  The wheel is now drawn pixel by pixel on a canvas using the same
+  angle-and-radius mapping the hit-testing uses, so the two cannot drift
+  apart again. This also made it testable: pressing a point and reading the
+  pixel underneath now agree, which is the check that would have caught the
+  original bug (the earlier test only compared the maths against itself).
+
 ## 3.1.0
 
 - Replaced the browser's colour input with a picker shaped like WLED's own
