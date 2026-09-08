@@ -1,6 +1,12 @@
 # =============================================================================
 # PS5 Lighting
 # =============================================================================
+# NOTE: the add-on can now do all of this itself, configured in its own panel
+# (Lighting section) with no YAML at all -- including the snapshot/restore
+# below. This example is for when you want automation logic the panel can't
+# express: time-of-day rules, presence conditions, notifications, or driving
+# things other than lights.
+# =============================================================================
 # Drives a WLED strip from the PS5's state, and puts the lights back the way
 # they were when you're done.
 #

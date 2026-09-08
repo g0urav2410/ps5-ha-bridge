@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.1.3
+
+Documentation brought back in line with the code, which had drifted over the
+last several releases.
+
+- Corrected the diagnostic sensor's name in the README. It was documented as
+  `binary_sensor.<name>_psn_auth`, but the entity ID follows the entity's
+  name, so it is really `binary_sensor.<name>_psn_connection_problem`. Anyone
+  who had wired an automation to the documented name would have found it
+  matched nothing.
+- Corrected the description of how the game colour is derived. It still
+  described the pre-2.5 behaviour ("vivid saturation and mid lightness")
+  rather than the saturation floor and artwork-following lightness that
+  actually ship, and it omitted why: dark covers were collapsing to grey.
+- Removed descriptions of interface that no longer exists -- the per-card
+  glow and the "Enable built-in lighting control" label both predate the 3.0
+  redesign.
+- Documented what was never written down: how quickly each transition is
+  detected and why, the colour picker, live-applying settings, the preview
+  and its 45-second revert, and the effect list.
+- Added the MIT licence file the README claimed existed.
+- Noted at the top of the automation example that the add-on can now do all
+  of it from its own panel, so the YAML is for logic the panel can't express.
+
 ## 3.1.2
 
 - The colour wheel is much finer to work with. It was squeezed to 148px

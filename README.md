@@ -1,111 +1,93 @@
 # PS5 to MQTT Bridge
 
-A custom Home Assistant add-on. Combines two independent data sources for a
-PS5 and publishes them to MQTT with HA auto-discovery:
+A Home Assistant add-on that watches a PlayStation 5 and publishes what it's
+doing to MQTT — awake or asleep, at the home screen or in a game, and which
+game. It can drive your lights from that directly, so no automations are
+needed unless you want them.
 
-- **LAN power ping** (port 9302, Sony's local discovery protocol) — no login
-  needed, tells you `AWAKE` vs `STANDBY` the instant the console starts
-  powering on.
-- **PSN presence** (Sony's account API) — tells you what you're actually
-  doing: at the home screen, or playing a specific game. Requires a one-time
-  setup (see below), but never needs to be redone under normal use — see
-  "Why setup is only once" below.
+Full documentation is in [DOCS.md](DOCS.md), which is also what the add-on
+shows on its Documentation tab.
 
-Combining both gives a state machine richer than plain on/off:
+## How it knows
 
-| Power (LAN) | Presence (PSN) | `sensor.<name>_state` |
+Two independent sources, because neither alone is enough:
+
+| Source | Needs an account? | Tells you |
 |---|---|---|
-| STANDBY | — | `off` |
-| AWAKE | offline/away (not fully booted yet) | `booting` |
-| AWAKE | online, no game running | `home` |
-| AWAKE | online, a game running | `playing` |
+| LAN ping, UDP 9302 (Sony's local discovery protocol) | No | Awake vs rest mode, within seconds |
+| PSN presence (Sony's account API) | One-time sign-in | Home screen vs in a game, and the title |
 
-## Entities published
+Together they give a state machine rather than a switch:
 
-- `binary_sensor.<name>_power` — on/off, from the LAN ping alone
-- `sensor.<name>_state` — `off` / `awake` / `booting` / `home` / `playing`
-  (`awake` only shows if you skip PSN setup — otherwise it resolves to one
-  of the more specific states)
-- `sensor.<name>_activity` — the current game's title, or `Home Screen`, or `none`
+| LAN ping | PSN presence | `sensor.<name>_state` |
+|---|---|---|
+| rest mode / unreachable | — | `off` |
+| awake | not online yet | `booting` |
+| awake | online, no game | `home` |
+| awake | online, in a game | `playing` |
+
+The gap between "the console answers the network" and "PSN says it's online"
+is what makes `booting` possible — nothing reports it directly.
+
+## Entities
+
+- `binary_sensor.<name>_power` — on while the console is awake
+- `sensor.<name>_state` — `off` / `booting` / `home` / `playing`
+  (`awake` if you skip the PSN step)
+- `sensor.<name>_activity` — the running game's title, `Home Screen`, or `none`
 - `sensor.<name>_game_color` — a colour sampled from the running game's cover
-  art (hex as the state, `[r, g, b]` in an `rgb` attribute), so lighting can
-  match whatever is being played. `none` when nothing usable could be derived.
-- `binary_sensor.<name>_psn_auth` — diagnostic "problem" sensor; turns on if
-  PSN re-authentication is needed (set up an HA notification on this so you
-  actually hear about it instead of finding out weeks later)
+  art, hex as the state and `[r, g, b]` in an `rgb` attribute. `none` when the
+  artwork yields nothing usable.
+- `binary_sensor.<name>_psn_connection_problem` — diagnostic; on when PSN
+  needs signing in to again. Worth a notification, so you hear about it rather
+  than noticing weeks later.
 
-## Install on HAOS
+## Install
 
-1. Settings → Add-ons → Add-on Store → ⋮ → **Repositories**, and add:
-   `https://github.com/g0urav2410/ps5-ha-bridge`
-2. **PS5 to MQTT Bridge** now appears in the store.
-3. Install it, open its **Configuration** tab, set:
-   - `ps5_ip`: your PS5's LAN IP (give it a DHCP reservation on your router)
-   - `mqtt_host` / `mqtt_port` / `mqtt_user` / `mqtt_password` (Mosquitto
-     add-on: host is `core-mosquitto`)
-   - `poll_interval`: seconds between LAN power pings (default 5)
-   - `presence_interval`: seconds between PSN presence checks (default 15)
-4. Start the add-on.
-5. Open the add-on — it has its own panel (via Ingress) with a **PS5
-   Bridge** icon in the HA sidebar. Power on/off already works at this
-   point with zero further setup.
+1. Home Assistant → Settings → Add-ons → Add-on Store → ⋮ → **Repositories**,
+   and add `https://github.com/g0urav2410/ps5-ha-bridge`
+2. Install **PS5 to MQTT Bridge** from the store.
+3. In its Configuration tab set `ps5_ip` and your MQTT details
+   (`core-mosquitto` if you use the Mosquitto add-on).
+4. Start it. Power detection works from here with nothing further.
+5. Open the add-on's Web UI to connect your PSN account — one copy-paste,
+   which unlocks the game title and the richer states.
 
-## Optional: connect your PSN account (for game/activity data)
+## Lighting
 
-Open the **PS5 Bridge** panel (sidebar icon from step 5 above) and follow
-the on-page steps — it's a single copy-paste from an already-logged-in
-`playstation.com` browser tab, no console interaction needed.
+The add-on's panel can drive your lights itself: choose which lights, then
+set effect, colour, brightness, speed and fade for each state, with a **Try it
+now** that applies it to the real lights and can be undone.
 
-### Why setup is only once
+Colours are chosen on a WLED-style wheel with a shade bar, quick colours, and
+hex or R/G/B entry. On the *Playing* state the colour can come from the
+running game's own cover art instead, with a fallback for games whose artwork
+yields nothing usable.
 
-Sony issues a **new** refresh token every time the old one is used, with its
-expiry reset. The bridge stores whichever one it was last given and swaps it
-in automatically every refresh cycle (roughly hourly, since it's polling
-presence that often). As long as the add-on runs at least once every couple
-of months, the refresh token never actually reaches its expiry — so in
-practice this is a true one-time setup. It only breaks if the add-on is
-powered off for 2+ months straight, or if you change your PSN password
-(which revokes all app sessions). If that happens, the `psn_auth` problem
-sensor turns on and the setup panel shows "Not connected" again — just
-redo the same copy-paste.
+It can also snapshot your lighting when a session starts and put it back when
+the console goes to sleep.
 
-## Lighting without automations
+If you'd rather write automations, leave that switched off — the add-on won't
+touch your lights, and the sensors behave the same either way. A worked
+example is in [`examples/ps5-lighting-automation.yaml`](examples/ps5-lighting-automation.yaml),
+including a failsafe for the case where the add-on stops mid-session and never
+gets to report `off`.
 
-The add-on's panel can drive your lights itself: pick which lights to
-control, then set effect, colour, brightness, speed and fade for each PS5
-state, with a "Try it now" button to test each one. Colours can be fixed or
-taken from the running game's cover art, and it can snapshot your lights when
-a session starts and restore them when it ends.
+## Honest limits
 
-If you'd rather write automations, leave that switched off -- the add-on
-won't touch your lights, and the sensors behave exactly as before.
+- Built on **unofficial, reverse-engineered protocols** — the same ones
+  `playactor` and `psn-api` use. Sony could change either at any time. Both
+  are read-only here.
+- Power detection is awake vs rest mode, not true cold-off.
+- PSN presence reports **games**, not apps: YouTube or Netflix reads the same
+  as the home screen.
+- Remote Play looks identical to playing in the room — the game runs on the
+  console either way.
+- The console's actual light-bar colour isn't broadcast anywhere, so it can't
+  be mirrored. `sensor.<name>_state` is what you drive your own colours from.
+- Waking or shutting down the console from Home Assistant isn't supported. It
+  needs console pairing and an encrypted session, which is separate work.
 
-## Automation ideas
+## Licence
 
-- Trigger on `sensor.<name>_state` changing to `home` → dim white light
-- Trigger on `sensor.<name>_state` changing to `playing` → your gaming scene
-- Trigger on `sensor.<name>_state` changing to `off` → lights off after a delay
-- Trigger on `binary_sensor.<name>_psn_auth` turning on → a persistent
-  notification reminding you to re-open the setup panel
-
-A complete, commented example — including a failsafe for the case where the
-add-on stops mid-session and never gets to report `off` — is in
-[`examples/ps5-lighting-automation.yaml`](examples/ps5-lighting-automation.yaml).
-
-## Notes / honesty about limits
-
-- This is all built on **unofficial, reverse-engineered protocols** (the
-  same ones community projects like `playactor` and `psn-api` use) — Sony
-  could change either at any time. Both are read-only here; nothing is sent
-  to your account beyond a login/presence check, same as the official PS app.
-- Power detection is AWAKE vs STANDBY, not true cold-off. A PS5 that's
-  unplugged simply stops replying, and after 3 missed polls the bridge
-  reports it as `off`. (`availability` deliberately stays `online` in that
-  case — it tracks whether the *bridge* is alive, not the console. Marking
-  the entities unavailable would hide the state from automations.)
-- There's no way to read the PS5's actual light-bar color/pattern — it
-  isn't broadcast anywhere. The `state` sensor above is what you use to
-  drive *your own* light colors/patterns per state in an HA automation.
-- Wake-on-LAN style remote power-on/off from HA is a separate, heavier
-  feature (needs console pairing + an encrypted session) and isn't built
-  here — ask if you want it added.
+MIT.

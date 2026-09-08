@@ -1,181 +1,192 @@
 # PS5 to MQTT Bridge
 
-Turns your PS5's power state — and optionally what you're actually playing —
-into MQTT sensors, so you can trigger lights (or anything else) in Home
-Assistant from what's happening on the console.
+Watches a PlayStation 5 and publishes what it's doing to MQTT, so Home
+Assistant can react to it. It can also drive your lights directly, without
+you writing any automations.
 
-## What it publishes
+## What it watches
 
-| Entity | Values | Requires PSN setup? |
+Two independent sources, because neither alone is enough:
+
+- **A LAN ping** to the console (UDP port 9302, Sony's local discovery
+  protocol). Needs no account and no pairing. Tells you the console is awake
+  or in rest mode, within seconds.
+- **PSN presence** (Sony's account API). Needs a one-time sign-in. Tells you
+  whether you're at the home screen or in a game, and which game.
+
+Combined, they give a state richer than on/off:
+
+| LAN ping | PSN presence | `sensor.<name>_state` |
 |---|---|---|
-| `binary_sensor.<name>_power` | `on` / `off` | No |
-| `sensor.<name>_state` | `off` / `booting` / `home` / `playing` | Only for `booting`/`home`/`playing` — otherwise reads `off`/`awake` |
-| `sensor.<name>_activity` | current game title, `Home Screen`, or `none` | Yes |
-| `sensor.<name>_game_color` | hex colour sampled from the running game's cover art, or `none`. An `rgb` attribute holds `[r, g, b]`. | Yes |
-| `binary_sensor.<name>_psn_connection_problem` | `on` if PSN re-auth is needed | Diagnostic |
+| rest mode / unreachable | — | `off` |
+| awake | not online yet | `booting` |
+| awake | online, no game | `home` |
+| awake | online, in a game | `playing` |
+
+Without the PSN step you still get `off` and `awake`, plus the power sensor.
+
+## Entities
+
+| Entity | Values |
+|---|---|
+| `binary_sensor.<name>_power` | `on` while the console is awake |
+| `sensor.<name>_state` | `off` / `booting` / `home` / `playing` (or `awake` without PSN) |
+| `sensor.<name>_activity` | the running game's title, `Home Screen`, or `none` |
+| `sensor.<name>_game_color` | a colour sampled from the running game's cover art, or `none`. An `rgb` attribute holds `[r, g, b]`. |
+| `binary_sensor.<name>_psn_connection_problem` | `on` when PSN needs signing in to again (diagnostic) |
+
+`<name>` comes from the `device_name` option, so by default these are
+`sensor.playstation_5_state` and so on.
 
 ## Configuration
 
 | Option | Description |
 |---|---|
-| `ps5_ip` | Your PS5's LAN IP. Set a DHCP reservation for it on your router so it never changes. |
-| `mqtt_host` | Your MQTT broker's address. Use `core-mosquitto` if you're running the Mosquitto add-on. |
+| `ps5_ip` | The console's IP. Give it a DHCP reservation on your router so it doesn't move. |
+| `mqtt_host` | Your broker. `core-mosquitto` if you use the Mosquitto add-on. |
 | `mqtt_port` | Usually `1883`. |
 | `mqtt_user` / `mqtt_password` | Credentials for that broker. |
-| `poll_interval` | Seconds between LAN power pings (2–300). Default `5`. This is a local UDP packet, so it's cheap — lower it for snappier on/off reactions. Governs `off` ↔ `booting`, i.e. powering on and off. |
-| `presence_interval` | Seconds between PSN presence checks (5–600). Default `15`. This one is a cloud API call, so keep it well above `poll_interval` to avoid rate-limiting. Governs `home` ↔ `playing`, i.e. starting and closing a game. Sony's own presence lag is a few seconds, so going below ~5 buys little. |
-| `device_name` | Display name for the device in Home Assistant. |
+| `poll_interval` | Seconds between LAN pings (2–300, default 5). A local UDP packet, so it's cheap. Governs how fast `off` ↔ `booting` reacts. |
+| `presence_interval` | Seconds between PSN checks (5–600, default 15). A call to Sony's servers, so keep it well above `poll_interval`. Governs how fast `home` ↔ `playing` reacts. Sony's own lag is a few seconds, so going below 5 buys nothing. |
+| `device_name` | What the device is called in Home Assistant. |
+
+### How quickly it reacts
+
+- **Waking up** shows within one `poll_interval`.
+- **Rest mode** also shows within one `poll_interval` — the console still
+  answers the ping, it just reports standby.
+- **Fully powered down or unplugged** takes three missed pings to confirm.
+  Those retries are a second apart rather than a full interval, so it lands
+  in roughly `poll_interval + 2s`.
+- **Starting or closing a game** is bounded by `presence_interval` plus
+  Sony's own propagation delay. This one will never feel instant.
 
 ## First run
 
-1. Set `ps5_ip` and your MQTT details above, then **Start** the add-on.
-2. Check the **Log** tab — you should see `Connected to MQTT broker` and a
-   timestamped `power=... state=... activity=...` line. That line is only
-   written when something changes, so a steady console logs once, not
+1. Set `ps5_ip` and your MQTT details, then start the add-on.
+2. Check the **Log** tab. You want `Connected to MQTT broker` and a
+   timestamped `power=… state=… activity=…` line. That line is only written
+   when something changes, so a console sitting still logs once, not on
    every poll.
-3. Power detection works immediately with no further setup — check
-   Settings → Devices & Services → MQTT in Home Assistant for the new device.
+3. Power detection works immediately. Look under Settings → Devices &
+   Services → MQTT for the new device.
 
-## Optional: connect your PSN account
+## Connecting your PSN account
 
-Open the add-on's **Web UI** (or the sidebar panel, if `panel_title` shows up
-for you) — it walks through a one-time step:
+Open the add-on's **Web UI**. It walks through one copy-paste:
 
-1. Log into `playstation.com` in any browser on the same device.
-2. Follow the link on the page to get a login code (a page that prints
-   `{"npsso":"..."}`).
-3. Paste the whole thing into the box, click Connect.
+1. Sign in to `playstation.com` in a browser.
+2. Open the login-code link on the page. It prints `{"npsso":"…"}`.
+3. Paste that in and press Connect.
 
-This unlocks `booting`, `home`, and `playing` states plus the current game
-title. It's a genuine one-time step — the add-on automatically rotates its
-own refresh token forever after, as long as it keeps running at least once
-every couple of months. If it ever does need to be redone (e.g. you changed
-your PSN password), the `psn_connection_problem` sensor turns on and the
-panel shows "Not connected" again.
+This unlocks `booting`, `home`, `playing`, the game title, and the game
+colour.
 
-## Game colour
+### Why this is only asked once
 
-While a game is running, the bridge samples that game's cover art and
-publishes a representative colour, so a light can match whatever is being
-played without you maintaining a list of games. Use it like this:
+Sony issues a **new** refresh token every time the old one is used, with the
+expiry reset. The add-on stores whichever one it was last handed. Since it
+refreshes while polling presence, the token keeps rolling forward and never
+reaches its expiry.
 
-```yaml
-rgb_color: >
-  {{ state_attr('sensor.playstation_5_game_color', 'rgb') or [255, 0, 0] }}
-```
+It only breaks if the add-on is stopped for a couple of months, or if you
+change your PSN password (which revokes app sessions). When that happens the
+`psn_connection_problem` sensor turns on and the panel shows the connect
+steps again.
 
-The `or [...]` is the fallback, and it lives in *your* automation rather than
-in the add-on -- some cover art (fully greyscale, or all black) yields no
-usable colour, and the bridge publishes `none` in that case so you can decide
-what should happen.
+### If the game title never appears
 
-Two notes on getting a *uniform* colour on a strip:
+Use **Show what PSN returns** in the panel. If `gameTitleInfoList` is empty
+while a game is running, Sony is withholding it rather than the add-on
+losing it — check **Online Status and Now Playing** under the console's
+privacy settings.
 
-- WLED's palette must be `Default`. With any other palette selected, the
-  palette overrides `rgb_color` and paints a spread of colours along the
-  strip. Set `select.wled_color_palette` to `Default` in the same automation.
-- Use the `Solid` effect (or set the colour on an animated effect that
-  respects the primary colour, like `Candle Multi`).
+## Lighting, without automations
 
-### How the colour is chosen
+The panel can drive your lights itself. Turn on the toggle in the Lighting
+section, choose which lights to control, then set up each state.
 
-Cover art is not one flat colour, so the bridge looks for the dominant colour
-*family*:
-
-1. Pixels that carry no identity are discarded -- near-black, near-white and
-   greys. Most covers are heavily dark, and skipping this step resolves
-   almost every game to black.
-2. The rest are grouped by hue family, not exact shade. A sunset spans dozens
-   of distinct oranges; bucketing by exact value splits that one obvious
-   colour so finely that no bucket looks dominant.
-3. The largest family wins, nudged slightly toward vivid families.
-4. Its hue is rebuilt at a vivid saturation and mid lightness. Averaging the
-   family's raw RGB instead comes out washed-out -- a vivid orange averages
-   to muddy brick, which reads poorly on a strip.
-
-Each cover is fetched once (at 64px, a couple of KB) and cached for as long
-as the add-on runs.
-
-## Lighting (built in)
-
-The add-on's panel can drive your lights directly, so no automation is
-needed. Turn on **Enable built-in lighting control**, pick the lights, and
-configure each state:
+The four states are listed as rows. Opening one shows:
 
 | Setting | Notes |
 |---|---|
-| Effect | Typeahead over the light's own effect list. Leave blank for none. Only meaningful for lights that have effects (WLED does). |
-| Colour | A fixed colour, chosen on a WLED-style wheel with a shade bar, quick colours (including the running game's own colour) and hex or R/G/B entry. On **Playing a game** only, **use game colour** takes it from the running game's cover art instead, and the swatch becomes the fallback for games with no usable artwork. |
-| Brightness | 0-255. |
-| Effect speed | Only applied when a matching `number.<light>_speed` entity exists, which is how WLED exposes it. |
+| Effect | Everything the light reports. Click to browse the list, or type to filter. An effect the light doesn't have is flagged. Leave blank for none. |
+| Colour | A wheel for hue and saturation, a bar for shade, quick colours, and hex or R/G/B entry. On **Playing** only, *Take it from the game* uses the cover-art colour instead, and the swatch becomes the fallback for games with no usable artwork. |
+| Brightness | The light's output, 1–255. Separate from the picker's shade, which changes the colour itself. |
+| Speed | Effect speed. Only applied when the light exposes a matching `number.<light>_speed` entity, which is how WLED does it. |
 | Fade | Transition time in seconds. |
+| React to this state | Whether this state does anything at all. |
 
-Each state's card carries a glow in the colour it will actually use, so
-colours can be compared at a glance. Effects are not simulated -- WLED has
-around 180 of them and any approximation would mislead -- so use "Try it
-now" to see one on the real lights.
+**Try it now** applies a state's settings to the real lights immediately. It
+snapshots them first, turns into **Stop and restore**, and reverts on its own
+after 45 seconds if you forget.
 
-Click the effect field to list everything the selected light supports, or
-type to filter. An effect the light doesn't have is flagged.
+**Put the lights back when the PS5 turns off** snapshots your lighting when a
+session starts and restores it at the end. If the snapshot is gone — Home
+Assistant restarted mid-session — the lights are switched off instead.
 
-While a preview is running, that state's "Try it now" becomes "Stop &
-restore".
+### Things worth knowing
 
-Settings save as you change them; there is no Save button, and they take
-effect immediately -- switching a state off while the console is in that
-state releases the lights rather than waiting for the next transition.
+- **Settings apply as you change them.** There's no Save button. Switching a
+  state off while the console is in that state releases the lights straight
+  away rather than waiting for the next transition, and editing the active
+  state updates the lights live.
+- **Effects are not simulated.** WLED has around 180 of them and any
+  approximation would mislead, so the panel shows only the colour, which it
+  can state accurately. Use *Try it now* to see an effect on the real strip.
+- **The WLED palette is forced to `Default`** before a colour is applied. Any
+  other palette overrides the colour and spreads a gradient along the strip.
+- This needs the `homeassistant_api` permission, which the add-on declares.
+  Home Assistant will ask you to approve it.
 
-The light picker is searchable and grouped by room.
+### Prefer automations?
 
-**Restore previous lighting when the PS5 turns off** snapshots the lights
-when a session starts and puts them back afterwards. If the snapshot is gone
-(Home Assistant restarted mid-session), the lights are simply turned off.
+Leave the Lighting toggle off and the add-on won't touch your lights. Drive
+them from `sensor.<name>_state` yourself. A worked example is in the repo at
+`examples/ps5-lighting-automation.yaml`, including a failsafe for the case
+where the add-on stops mid-session and never gets to report `off`.
 
-The WLED palette is forced to `Default` before applying a colour, since any
-other palette overrides the colour and spreads a gradient along the strip.
+## Game colour
 
-This needs the `homeassistant_api` permission, which the add-on declares --
-Home Assistant will ask you to approve it.
+While a game is running, the add-on fetches that game's cover art (at 64px,
+a couple of KB, cached per game) and derives a colour from it.
 
-### Prefer automations instead?
+Cover art is not one flat colour, so it looks for the dominant colour
+*family*:
 
-Leave built-in lighting switched off and the add-on won't touch your lights;
-drive them from `sensor.<name>_state` as before.
+1. Pixels carrying no identity are discarded — near-black, near-white and
+   greys. Most covers are dark enough that skipping this step resolves almost
+   every game to black.
+2. The rest are grouped by hue family rather than exact shade. A sunset spans
+   dozens of oranges, and bucketing by exact value splits that one obvious
+   colour so finely that no bucket looks dominant.
+3. The largest family wins, nudged slightly toward vivid ones.
+4. Its hue is rebuilt with a floor under the saturation, and a lightness that
+   follows the artwork rather than being pinned mid-range.
 
-## Automations
+Step 4 is deliberate. Without the saturation floor, dark covers collapse to
+grey — Demon's Souls resolved to `#567181`, a flat slate. The obvious
+alternative, scoring families by vividness instead of size, was tried and
+rejected: it fixed dark covers but pushed muted ones to neon, taking The Last
+of Us from a faithful olive to `#00ff24`.
 
-A worked example, heavily commented, lives in the repo at
-`examples/ps5-lighting-automation.yaml`. It covers driving a WLED strip from
-the state sensor and restoring the previous lighting afterwards.
-
-### Failsafe
-
-One failure mode is worth guarding against: if this add-on stops while a
-session is in progress (crash, add-on update, host reboot), its MQTT
-last-will marks the entities `unavailable`. An automation triggering on
-`to: "off"` will never fire, so whatever lighting was active stays on
-indefinitely.
-
-The example file includes a second, separate `PS5 Lighting Failsafe`
-automation for this: it triggers on the state being `unavailable` for 5
-minutes, then restores the lights. The delay lets brief restarts pass
-without disturbing anything.
-
-Whether you need it is a judgement call -- add-ons with the watchdog enabled
-usually restart within seconds, well inside the 5-minute window. It matters
-if lights being stuck on overnight would bother you; skip it if you'd rather
-just flip them off by hand on the rare occasion.
+Art that yields nothing usable (fully greyscale, all black) publishes `none`,
+so an automation can apply its own fallback.
 
 ## Known limits
 
-- This relies on Sony's local discovery protocol and the same presence API
-  the official PS app uses — both are unofficial/reverse-engineered, not a
-  published API. They're read-only here and could change at any time.
-- Power detection distinguishes awake vs. rest mode, not true cold power-off.
-  A PS5 that's fully unplugged won't reply, and `binary_sensor.power`'s
-  availability drops to `offline` after 3 missed polls in a row.
-- Presence only reports actual **games**, not media apps — watching YouTube
-  or Netflix reads the same as sitting at the home screen (`home`).
-- There's no way to read the console's actual light-bar color — nothing
-  exposes that. Use `sensor.<name>_state` to drive your own light colors
-  and effects per state instead.
+- This is built on **unofficial, reverse-engineered protocols** — the same
+  ones community projects like `playactor` and `psn-api` use. Sony could
+  change either at any time. Both are read-only here.
+- Power detection is awake vs rest mode, not true cold-off. An unplugged
+  console simply stops answering, and after three missed pings is reported
+  as `off`.
+- `availability` deliberately stays online when the console is off. It tracks
+  whether the *bridge* is running, not the console. Marking the entities
+  unavailable would hide the state from automations entirely.
+- PSN presence reports **games**, not apps. Watching YouTube or Netflix reads
+  the same as sitting on the home screen.
+- Remote Play is indistinguishable from playing in the room. The game runs on
+  the console either way, and nothing in either data source says otherwise.
+- Waking or shutting down the console from Home Assistant isn't supported.
+  That needs console pairing and an encrypted session, which is separate work.
