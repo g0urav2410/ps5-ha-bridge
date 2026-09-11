@@ -59,13 +59,21 @@ The add-on's panel can drive your lights itself: choose which lights, then
 set effect, colour, brightness, speed and fade for each state, with a **Try it
 now** that applies it to the real lights and can be undone.
 
+A mixed set of lights is handled per light: each one can be switched out
+entirely, react to only some states — a room lamp joining in only once a game
+starts — and carry its own brightness, hue and saturation trim, since the same
+colour lands warmer on a bulb than on a strip. Lights with no effects take the
+colour and skip the effect rather than failing.
+
 Colours are chosen on a WLED-style wheel with a shade bar, quick colours, and
 hex or R/G/B entry. On the *Playing* state the colour can come from the
 running game's own cover art instead, with a fallback for games whose artwork
 yields nothing usable.
 
-It can also snapshot your lighting when a session starts and put it back when
-the console goes to sleep.
+It can also record your lighting exactly as it was when a session starts —
+brightness, colour, effect, and which lights were off — and put it back when
+the console goes to sleep. That record survives a restart of the add-on or of
+Home Assistant.
 
 If you'd rather write automations, leave that switched off — the add-on won't
 touch your lights, and the sensors behave the same either way. A worked

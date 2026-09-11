@@ -110,23 +110,51 @@ The four states are listed as rows. Opening one shows:
 
 | Setting | Notes |
 |---|---|
-| Effect | Everything the light reports. Click to browse the list, or type to filter. An effect the light doesn't have is flagged. Leave blank for none. |
+| Effect | Everything the chosen lights report, pooled. Click to browse the list, or type to filter. Lights that don't have the chosen effect just take the colour, and the panel says how many will run it. Leave blank for none. |
 | Colour | A wheel for hue and saturation, a bar for shade, quick colours, and hex or R/G/B entry. On **Playing** only, *Take it from the game* uses the cover-art colour instead, and the swatch becomes the fallback for games with no usable artwork. |
 | Brightness | The light's output, 1–255. Separate from the picker's shade, which changes the colour itself. |
 | Speed | Effect speed. Only applied when the light exposes a matching `number.<light>_speed` entity, which is how WLED does it. |
 | Fade | Transition time in seconds. |
 | React to this state | Whether this state does anything at all. |
 
+### Per-light settings
+
+A row appears for each chosen light once there are two of them, because a
+mixed set rarely wants the same treatment:
+
+| Setting | Notes |
+|---|---|
+| The row's switch | Whether the bridge touches this light at all. Off leaves it entirely alone. |
+| Joins in at | Which of the four states this light reacts to. A room lamp can sit out the home screen and come on only once a game starts, while a strip follows everything. |
+| Brightness | A percentage of whatever the state asks for, so one light can run dimmer than the rest without editing every state. |
+| Hue trim / Saturation | Nudges this light's colour. |
+
+The **Result** swatches show each state's own colour above this light's
+version of it. Match them by eye against the wall rather than by the
+numbers — that's the only reference that counts.
+
+Why a trim is needed at all: two lights given the same RGB value rarely look
+the same. A bulb and an LED strip have different primaries and different
+white points, so even plain white lands warm on one and blue on the other.
+Nothing in Home Assistant reports a light's white point, so this can't be
+corrected automatically.
+
 **Try it now** applies a state's settings to the real lights immediately. It
 snapshots them first, turns into **Stop and restore**, and reverts on its own
 after 45 seconds if you forget.
 
-**Put the lights back when the PS5 turns off** snapshots your lighting when a
-session starts and restores it at the end. If the snapshot is gone — Home
-Assistant restarted mid-session — the lights are switched off instead.
+**Put the lights back when the PS5 turns off** records each light exactly as
+it was when a session starts — brightness, colour, effect, and which ones
+were switched off — and replays that at the end. The record is written to the
+add-on's own storage, so it survives the add-on or Home Assistant restarting
+mid-session. If there's no record to replay, the lights are switched off
+instead.
 
 ### Things worth knowing
 
+- **An effect a light doesn't have is simply not sent to it.** Home Assistant
+  rejects the whole call otherwise, which used to mean a plain bulb chosen
+  alongside a strip took nothing at all — not even the colour.
 - **Settings apply as you change them.** There's no Save button. Switching a
   state off while the console is in that state releases the lights straight
   away rather than waiting for the next transition, and editing the active

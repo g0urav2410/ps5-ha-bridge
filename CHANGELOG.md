@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.2.0
+
+Mixed sets of lights, and lights that come back the way you left them.
+
+- **Per-light settings.** Each chosen light gets a switch of its own, the
+  states it joins in at, and a brightness, hue and saturation trim. A room
+  lamp can sit out the home screen and come on only once a game starts,
+  while the strip follows everything.
+- **Lights without effects no longer break.** Sending an effect name a light
+  doesn't know made Home Assistant reject the whole call, so a plain bulb
+  chosen alongside a WLED strip took nothing at all -- not even the colour.
+  Effects are now only sent to lights that have them, and the effect list is
+  the union of every chosen light rather than the first one's.
+- **A colour trim, for lights that don't agree.** The same rgb value lands
+  warmer on a bulb than on a strip, and no two sets of LED primaries match.
+  Hue and saturation can now be nudged per light, with a swatch showing the
+  state's colour above this light's version of it, so it can be matched by
+  eye against the wall.
+- **Restoring is now exact, and survives a restart.** Snapshots were made
+  with `scene.create`, which lives in memory only -- an HA restart mid-session
+  threw it away and the lights were switched off instead of put back. The
+  add-on now records each light's own state to `/data` and replays it, so
+  brightness, colour, effect and which lights were off all come back, even if
+  the add-on or Home Assistant restarted in between.
+
 ## 3.1.3
 
 Documentation brought back in line with the code, which had drifted over the

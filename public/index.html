@@ -168,6 +168,70 @@
 
   /* ------------------------------------------------------ light picker */
   .picker-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .plights { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; }
+  .plight { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .plight > .prow { display: flex; align-items: center; gap: 12px; padding: 9px 12px; }
+  .plight > .prow > .prow-main {
+    flex: 1; display: flex; align-items: center; gap: 14px; padding: 2px 0;
+    background: none; border: 0; color: var(--text); cursor: pointer; text-align: left; font: inherit;
+  }
+  .prow-main .pnm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Switched off, the light stays listed and editable but reads as inert. */
+  .plight.muted .prow-main, .plight.muted .pbody { opacity: 0.45; }
+  .plight > .pbody { display: none; padding: 2px 12px 14px; border-top: 1px solid var(--line); }
+  .plight.open > .pbody { display: block; }
+  .plight.open .prow-main .chev { transform: rotate(90deg); }
+
+  /* A light is a participant on the same four-stop path the hero draws, so
+     it's described in the same vocabulary: a pip per state, filled where
+     this light joins in. Reads down a stack of lights at a glance, and
+     unlike a text summary it can't truncate. */
+  .track { display: flex; align-items: center; gap: 0; flex: none; }
+  .track .stop {
+    background: none; border: 0; padding: 0; font: inherit; color: inherit;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    position: relative; width: 22px;
+  }
+  .track .stop::before {
+    content: ""; position: absolute; top: 3.5px; left: -50%; right: 50%;
+    height: 1px; background: var(--line);
+  }
+  .track .stop:first-child::before { display: none; }
+  .track .pip {
+    width: 8px; height: 8px; border-radius: 50%; position: relative; z-index: 1;
+    border: 1px solid var(--line); background: var(--bg); transition: background 120ms, border-color 120ms;
+  }
+  .track .stop.on .pip { background: var(--text); border-color: var(--text); }
+  .track.big { gap: 0; }
+  .track.big .stop { width: 56px; cursor: pointer; }
+  .track.big .pip { width: 11px; height: 11px; }
+  .track.big .stop::before { top: 5px; }
+  .track.big .nm {
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint);
+  }
+  .track.big .stop.on .nm { color: var(--text); }
+  .track.big .stop:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+  /* The trim is judged by eye against a wall, not by its numbers, so show
+     the colour each state will actually send to this light. */
+  .trim-out { display: flex; gap: 10px; margin: 4px 0 14px; flex-wrap: wrap; }
+  .trim-out .to { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .trim-out .pair {
+    display: flex; flex-direction: column; width: 46px;
+    border-radius: 4px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line);
+  }
+  /* The state's own colour on top, this light's version below, sharing an
+     edge -- the difference is only judgeable when they touch. */
+  .trim-out .pair i { height: 15px; display: block; }
+  .trim-out .pair i.base { border-bottom: 1px solid var(--bg); }
+  /* .hint is indented to line up under the state cards' label column;
+     inside a per-light body there is no such column. */
+  .pbody .hint { margin-left: 0; }
+  .trim-out .nm {
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint);
+  }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
   .chip {
     font-size: 0.78rem; padding: 4px 10px; border-radius: 5px; cursor: pointer;
@@ -418,6 +482,8 @@
           <div id="lightsList"></div>
         </div>
       </div>
+
+      <div class="plights" id="perLight"></div>
 
       <label class="inline-sw" style="margin-top:16px;">
         <span class="sw"><input type="checkbox" id="restoreOnOff"><span class="tr"></span></span>
@@ -677,15 +743,199 @@
     const i = lighting.lights.indexOf(id);
     if (i === -1) lighting.lights.push(id); else lighting.lights.splice(i, 1);
     renderLights();
+    renderPerLight();
     refreshEffectOptions();
     queueSave();
   });
 
+  // ------------------------------------------------ per-light settings
+  const PL_DEFAULTS = { enabled: true, states: { booting: true, home: true, playing: true, off: true },
+    brightnessScale: 100, hueShift: 0, satScale: 100 };
+
+  function perLightFor(id) {
+    if (!lighting.perLight) lighting.perLight = {};
+    const cur = lighting.perLight[id] || {};
+    lighting.perLight[id] = {
+      ...PL_DEFAULTS, ...cur,
+      states: { ...PL_DEFAULTS.states, ...(cur.states || {}) },
+    };
+    return lighting.perLight[id];
+  }
+
+  // The header's summary is the same four-stop track the hero draws, so a
+  // stack of lights can be read down the column: which lights join in when.
+  function trackHtml(id, big) {
+    const p = perLightFor(id);
+    return '<span class="track' + (big ? " big" : "") + '">' + STATES.map(([k, label]) => {
+      const on = p.states[k] !== false;
+      const tag = big ? "button" : "span";
+      return "<" + tag + ' class="stop' + (on ? " on" : "") + '"' +
+        (big ? ' type="button" data-lstate="' + esc(id) + "|" + k + '"' +
+               ' aria-pressed="' + on + '" title="' + esc(label) + '"' : "") +
+        '><span class="pip"></span>' + (big ? '<span class="nm">' + esc(label) + "</span>" : "") +
+        "</" + tag + ">";
+    }).join("") + "</span>";
+  }
+
+  // What this light will actually be sent, per state it reacts to: the
+  // state's own colour above, this light's trimmed version below.
+  function trimOutHtml(id) {
+    const p = perLightFor(id);
+    const cells = STATES.filter(([k]) => k !== "off" && p.states[k] !== false)
+      .map(([k, label]) => {
+        const base = colourFor(k) || lighting.states[k].color || "#ffffff";
+        return '<span class="to"><span class="pair">' +
+          '<i class="base" style="background:' + esc(base) + '"></i>' +
+          '<i style="background:' + esc(trimHex(base, p)) + '"></i></span>' +
+          '<span class="nm">' + esc(label) + "</span></span>";
+      }).join("");
+    return cells
+      ? '<span class="label">Result</span><div class="trim-out">' + cells + "</div>"
+      : '<p class="hint">This light sits out every state, so nothing is sent to it.</p>';
+  }
+
+  // Mirrors trimColor() in lib/lighting.js -- hue shifted, saturation
+  // scaled. Brightness isn't shown here; it's the light's output, not the
+  // colour, and mixing the two is what made these hard to tell apart.
+  function trimHex(hex, p) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    let [h, sa, v] = rgbToHsv(...rgb);
+    h = (h + (p.hueShift || 0) + 360) % 360;
+    sa = Math.max(0, Math.min(1, sa * ((p.satScale ?? 100) / 100)));
+    const out = hsvToRgb(h, sa, v);
+    return "#" + out.map((n) => Math.round(n).toString(16).padStart(2, "0")).join("");
+  }
+
+  function slider(id, field, cfg, value) {
+    return '<div class="ctrl"><span class="label">' + cfg.label + "</span>" +
+      '<input type="range" min="' + cfg.min + '" max="' + cfg.max + '" value="' + value +
+        '" data-light-id="' + esc(id) + '" data-lfield="' + field + '">' +
+      '<span class="val">' + cfg.fmt(value) + "</span></div>";
+  }
+
+  const PL_SLIDERS = {
+    brightnessScale: { label: "Brightness", min: 10, max: 150, fmt: (v) => v + "%" },
+    hueShift: { label: "Hue trim", min: -30, max: 30, fmt: (v) => (v > 0 ? "+" : "") + v + "°" },
+    satScale: { label: "Saturation", min: 0, max: 150, fmt: (v) => v + "%" },
+  };
+
+  function touched(id) {
+    const p = perLightFor(id);
+    return STATES.some(([k]) => p.states[k] === false) ||
+      p.brightnessScale !== 100 || p.hueShift || p.satScale !== 100;
+  }
+
+  function renderPerLight() {
+    const box = el("perLight");
+    const chosen = availableLights.filter((l) => lighting.lights.includes(l.entity_id));
+    // With one light there is nothing to tell apart, so the section only
+    // earns its space at two -- or once it has been used, so settings never
+    // disappear along with the light they belonged to.
+    if (chosen.length < 2 && !chosen.some((l) => touched(l.entity_id))) {
+      box.innerHTML = "";
+      return;
+    }
+
+    box.innerHTML = '<span class="label">Per-light</span>' + chosen.map((l) => {
+      const id = l.entity_id;
+      const p = perLightFor(id);
+      const sliders = Object.entries(PL_SLIDERS)
+        .map(([f, cfg]) => slider(id, f, cfg, p[f])).join("");
+      return '<div class="plight' + (p.enabled === false ? " muted" : "") +
+        '" data-pcard="' + esc(id) + '">' +
+        '<div class="prow">' +
+          '<label class="sw" title="Let the PS5 control this light">' +
+            '<input type="checkbox" data-lenabled="' + esc(id) + '"' +
+            (p.enabled === false ? "" : " checked") +
+            ' aria-label="Let the PS5 control ' + esc(l.name) + '">' +
+            '<span class="tr"></span></label>' +
+          '<button class="prow-main" data-prow="' + esc(id) + '" aria-expanded="false">' +
+            '<span class="pnm">' + esc(l.name) + "</span>" +
+            '<span data-ptrack="' + esc(id) + '">' + trackHtml(id, false) + "</span>" +
+            '<span class="chev">▶</span>' +
+          "</button>" +
+        "</div>" +
+        '<div class="pbody">' +
+          '<span class="label">Joins in at</span>' +
+          '<div style="margin:8px 0 16px;">' + trackHtml(id, true) + "</div>" +
+          sliders +
+          '<div data-pout="' + esc(id) + '" style="margin-top:12px;">' + trimOutHtml(id) + "</div>" +
+          '<p class="hint">Hue and saturation trim this light towards the others. ' +
+          'The same colour lands warmer on a bulb than on a strip, so match it by eye ' +
+          'against the wall rather than by the numbers.' +
+          ((l.effects || []).length ? "" : " This light reports no effects, so it takes the colour only.") +
+          "</p>" +
+        "</div></div>";
+    }).join("");
+  }
+
+  el("perLight").addEventListener("change", (ev) => {
+    const t = ev.target.closest("[data-lenabled]");
+    if (!t || !lighting) return;
+    const id = t.dataset.lenabled;
+    perLightFor(id).enabled = t.checked;
+    t.closest(".plight").classList.toggle("muted", !t.checked);
+    queueSave();
+  });
+
+  el("perLight").addEventListener("click", (ev) => {
+    const chip = ev.target.closest("[data-lstate]");
+    if (chip) {
+      const [id, key] = chip.dataset.lstate.split("|");
+      const p = perLightFor(id);
+      const on = p.states[key] === false;
+      p.states[key] = on;
+      chip.classList.toggle("on", on);
+      chip.setAttribute("aria-pressed", String(on));
+      repaintPerLight(id);
+      queueSave();
+      return;
+    }
+    const row = ev.target.closest("[data-prow]");
+    if (!row) return;
+    const card = row.closest(".plight");
+    const open = card.classList.toggle("open");
+    row.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
+  function repaintPerLight(id) {
+    const q = (sel) => document.querySelector(sel + '="' + CSS.escape(id) + '"]');
+    const head = q("[data-ptrack");
+    if (head) head.innerHTML = trackHtml(id, false);
+    const out = q("[data-pout");
+    if (out) out.innerHTML = trimOutHtml(id);
+  }
+
+  document.addEventListener("input", (ev) => {
+    const t = ev.target;
+    if (!lighting || !t.dataset || !t.dataset.lfield) return;
+    const id = t.dataset.lightId;
+    const p = perLightFor(id);
+    p[t.dataset.lfield] = Number(t.value);
+    const val = t.closest(".ctrl").querySelector(".val");
+    if (val) val.textContent = PL_SLIDERS[t.dataset.lfield].fmt(Number(t.value));
+    repaintPerLight(id);
+    queueSave();
+  });
+
   // ---------------------------------------------------- state accordion
-  // Effects are device-specific, so they come from the first chosen light.
+  // Effects are device-specific and a mixed set of lights rarely agrees, so
+  // offer everything any chosen light can do. Lights that don't know the
+  // chosen effect simply don't get sent one -- they still take the colour.
   function currentEffects() {
-    const first = availableLights.find((l) => lighting.lights.includes(l.entity_id));
-    return first ? first.effects : [];
+    const seen = new Set();
+    for (const l of availableLights) {
+      if (!lighting.lights.includes(l.entity_id)) continue;
+      for (const fx of l.effects || []) seen.add(fx);
+    }
+    return [...seen];
+  }
+
+  // How many of the chosen lights will actually show a given effect.
+  function effectSupport(name) {
+    const chosen = availableLights.filter((l) => lighting.lights.includes(l.entity_id));
+    return { have: chosen.filter((l) => (l.effects || []).includes(name)).length, total: chosen.length };
   }
 
   function summarise(key) {
@@ -870,11 +1120,21 @@
     const ctrl = input.closest(".ctrl");
     const existing = ctrl.nextElementSibling;
     if (existing && existing.classList.contains("fx-warn")) existing.remove();
-    if (bad) {
+
+    // Partial support isn't an error -- the lights that know the effect run
+    // it, the rest take the colour. Saying so beats leaving it a mystery.
+    const sup = value && !bad ? effectSupport(value) : null;
+    const partial = sup && sup.total > 1 && sup.have < sup.total;
+    if (bad || partial) {
       const p = document.createElement("p");
       p.className = "hint fx-warn";
-      p.style.color = "var(--bad)";
-      p.textContent = "This light has no effect called " + value + ".";
+      if (bad) {
+        p.style.color = "var(--bad)";
+        p.textContent = "None of the chosen lights have an effect called " + value + ".";
+      } else {
+        p.textContent = sup.have + " of " + sup.total + " chosen lights can run " + value +
+          "; the others take the colour only.";
+      }
       ctrl.after(p);
     }
   }
@@ -1332,6 +1592,7 @@
       applyEnabledLook();
       if (!lighting.lights.length) el("picker").classList.add("open");
       renderLights();
+      renderPerLight();
       renderStates();
       el("lightingCard").style.display = "block";
     } catch (e) {
