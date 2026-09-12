@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.2.2
+
+- **The bridge no longer records its own lighting as if it were yours.** It
+  now remembers what it last sent to each light, and a light still showing
+  that is left out of the snapshot rather than captured. Without this, losing
+  the stored snapshot mid-session meant the next capture would record the
+  PS5's own colours and "restore" to them later, with the original gone for
+  good. Only lighting the bridge didn't put there is ever recorded.
+
 ## 3.2.1
 
 - **The lights are recorded the first time the bridge touches them**, rather

@@ -148,8 +148,13 @@ it was the first time the add-on touches it — brightness, colour, effect, and 
 were switched off — and replays that at the end. The record is written to the
 add-on's own storage, so it survives the add-on or Home Assistant restarting
 mid-session, and it's taken even if the add-on started up with the console
-already on. If there's no record to replay at all, the lights are switched
-off instead.
+already on.
+
+Only lighting the add-on didn't put there is ever recorded: it remembers what
+it last sent to each light, and a light still showing that is left out rather
+than captured. Otherwise a lost record would be replaced by the PS5's own
+colours, and the lighting you actually had would be gone for good. If there's
+no record to replay at all, the lights are switched off instead.
 
 ### Things worth knowing
 
