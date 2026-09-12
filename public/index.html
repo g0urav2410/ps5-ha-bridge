@@ -231,8 +231,7 @@
     font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
     font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
   }
-  .jrow.off .jnm, .jrow.off .pair, .jrow.off .jwhat { opacity: 0.4; }
-  .jwhat { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); }
+  .jrow.off .jnm, .jrow.off .pair { opacity: 0.4; }
   .pair {
     display: flex; width: 52px; height: 18px; flex: none;
     border-radius: 4px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line);
@@ -566,6 +565,11 @@
   });
 
   const STATES = [["off", "Off"], ["booting", "Booting"], ["home", "Home"], ["playing", "Playing"]];
+  // A light can sit out any of these. 'Off' isn't offered: a light the bridge
+  // drove has to be handed back when the console sleeps, and a tick box
+  // called "off" beside the light's own on/off switch meant two different
+  // things by the same word.
+  const JOINABLE = STATES.filter(([k]) => k !== "off");
 
   let lighting = null;
   let availableLights = [];
@@ -775,7 +779,7 @@
   // stack of lights can be read down the column: which lights join in when.
   function trackHtml(id) {
     const p = perLightFor(id);
-    return '<span class="track">' + STATES.map(([k, label]) =>
+    return '<span class="track">' + JOINABLE.map(([k, label]) =>
       '<span class="stop' + (p.states[k] !== false ? " on" : "") +
       '" title="' + esc(label) + '"><span class="pip"></span></span>').join("") + "</span>";
   }
@@ -785,19 +789,13 @@
   // "result" strip said the same thing twice and neither said it plainly.
   function stateListHtml(id) {
     const p = perLightFor(id);
-    return '<div class="jlist">' + STATES.map(([k, label]) => {
+    return '<div class="jlist">' + JOINABLE.map(([k, label]) => {
       const on = p.states[k] !== false;
-      let what;
-      if (k === "off") {
-        what = '<span class="jwhat mono">' +
-          (lighting.restoreOnOff ? "puts it back" : "switches it off") + "</span>";
-      } else {
-        const base = colourFor(k) || lighting.states[k].color || "#ffffff";
-        const trimmed = trimHex(base, p);
-        what = '<span class="pair" title="' + esc(base) + " on this light: " + esc(trimmed) + '">' +
-          '<i style="background:' + esc(base) + '"></i>' +
-          '<i style="background:' + esc(trimmed) + '"></i></span>';
-      }
+      const base = colourFor(k) || lighting.states[k].color || "#ffffff";
+      const trimmed = trimHex(base, p);
+      const what = '<span class="pair" title="' + esc(base) + " on this light: " + esc(trimmed) + '">' +
+        '<i style="background:' + esc(base) + '"></i>' +
+        '<i style="background:' + esc(trimmed) + '"></i></span>';
       return '<label class="jrow' + (on ? "" : " off") + '">' +
         '<span class="ck"><input type="checkbox" data-lstate="' + esc(id) + "|" + k + '"' +
           (on ? " checked" : "") + '><span class="bx"></span></span>' +
@@ -833,7 +831,7 @@
 
   function touched(id) {
     const p = perLightFor(id);
-    return STATES.some(([k]) => p.states[k] === false) ||
+    return JOINABLE.some(([k]) => p.states[k] === false) ||
       p.brightnessScale !== 100 || p.hueShift || p.satScale !== 100;
   }
 
@@ -872,6 +870,8 @@
         '<div class="pbody">' +
           '<span class="label">Joins in at</span>' +
           '<div data-pout="' + esc(id) + '">' + stateListHtml(id) + "</div>" +
+          '<p class="hint" style="margin-top:-8px;">When the PS5 sleeps this light is ' +
+          'handed back to whatever it was doing before, whichever states it joins.</p>' +
           sliders +
           '<p class="hint">The swatches show each state’s colour on the left and ' +
           'this light’s version of it on the right. ' +

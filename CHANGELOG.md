@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.3.4
+
+- **Removed the per-light `Off` tick box.** Every light card had two controls
+  meaning different things by the word "off": the light's own on/off switch,
+  and a tick box for the PS5's off state. The tick box was also a trap --
+  unticking it on a light that joins in during play left that light stuck on
+  the PS5's colours after the console slept. A light the bridge drove is now
+  always handed back, and the card says so. Configs that had it unticked are
+  corrected on load.
+
 ## 3.3.3
 
 - **The per-light section no longer reads as a second set of states.** It sat

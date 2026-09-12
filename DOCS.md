@@ -126,7 +126,7 @@ rarely wants the same treatment:
 | Setting | Notes |
 |---|---|
 | The row's switch | Whether the bridge touches this light at all. Off leaves it entirely alone — and switching it off mid-session hands that light straight back to what it was doing, while the others carry on. Switching it on mid-session brings the light in immediately. |
-| Joins in at | Tick the states this light reacts to. Each row shows the state's own colour beside this light's version of it. A room lamp can sit out the home screen and come on only once a game starts, while a strip follows everything. |
+| Joins in at | Tick the states this light reacts to: booting, home, playing. Each row shows the state's own colour beside this light's version of it. There's no tick for the PS5 turning off — a light the add-on drove is always handed back when the console sleeps. A room lamp can sit out the home screen and come on only once a game starts, while a strip follows everything. |
 | Brightness | A percentage of whatever the state asks for, so one light can run dimmer than the rest without editing every state. |
 | Hue trim / Saturation | Nudges this light's colour. |
 
