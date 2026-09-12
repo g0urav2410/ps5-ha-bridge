@@ -115,7 +115,7 @@ The four states are listed as rows. Opening one shows:
 | Brightness | The light's output, 1–255. Separate from the picker's shade, which changes the colour itself. |
 | Speed | Effect speed. Only applied when the light exposes a matching `number.<light>_speed` entity, which is how WLED does it. |
 | Fade | Transition time in seconds. |
-| React to this state | Whether this state does anything at all. |
+| React to this state | Whether this state does anything at all. On **Off** this controls the switch-off fallback only — putting the lights back is governed by its own toggle and happens either way. |
 
 ### Per-light settings
 
@@ -149,6 +149,11 @@ were switched off — and replays that at the end. The record is written to the
 add-on's own storage, so it survives the add-on or Home Assistant restarting
 mid-session, and it's taken even if the add-on started up with the console
 already on.
+
+Only lights the add-on actually drives are recorded — one switched off in
+the per-light settings, or sitting out every state, is left entirely alone,
+including anything you change on it mid-session. Lights chosen part-way
+through a session are picked up and restored with the rest.
 
 Only lighting the add-on didn't put there is ever recorded: it remembers what
 it last sent to each light, and a light still showing that is left out rather

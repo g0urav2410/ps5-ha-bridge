@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.3.0
+
+Three restore bugs, found by working through what actually happens with a
+mixed set of lights rather than the happy path.
+
+- **Switching the `Off` row off cancelled the restore.** That row reads as
+  "don't switch my lights off", but it also skipped putting them back, so the
+  lights stayed on the PS5's colours indefinitely and the "put the lights
+  back" toggle was silently ignored. Restoring is now governed by its own
+  setting, and the row only controls the switch-off fallback.
+- **A light told to sit out was still snapshotted and restored.** A bulb with
+  its own switch off, or sitting out every state, got recorded at the start of
+  a session and put back at the end -- undoing anything the user did to it in
+  between, on a light the bridge was told not to touch. Only lights the bridge
+  may actually drive are recorded now.
+- **A light added mid-session was never restored.** The snapshot was taken
+  once and then left alone, so a light chosen later finished the session stuck
+  on the PS5's colours. Snapshots now merge: lights already recorded keep
+  their original entry, and newly chosen ones are picked up.
+
 ## 3.2.2
 
 - **The bridge no longer records its own lighting as if it were yours.** It
