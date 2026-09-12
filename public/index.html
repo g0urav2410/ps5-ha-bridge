@@ -202,36 +202,42 @@
     border: 1px solid var(--line); background: var(--bg); transition: background 120ms, border-color 120ms;
   }
   .track .stop.on .pip { background: var(--text); border-color: var(--text); }
-  .track.big { gap: 0; }
-  .track.big .stop { width: 56px; cursor: pointer; }
-  .track.big .pip { width: 11px; height: 11px; }
-  .track.big .stop::before { top: 5px; }
-  .track.big .nm {
-    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
-    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint);
+  /* One row per state: switch, name, and the colour this light would show.
+     The trim is judged by eye against a wall, not by its numbers. */
+  .jlist { margin: 8px 0 18px; }
+  .ck { position: relative; width: 20px; height: 20px; flex: none; display: block; }
+  .ck input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .ck .bx {
+    position: absolute; inset: 0; border: 1px solid var(--line-soft); border-radius: 5px;
+    background: var(--bg); transition: background 120ms, border-color 120ms;
   }
-  .track.big .stop.on .nm { color: var(--text); }
-  .track.big .stop:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
-
-  /* The trim is judged by eye against a wall, not by its numbers, so show
-     the colour each state will actually send to this light. */
-  .trim-out { display: flex; gap: 10px; margin: 4px 0 14px; flex-wrap: wrap; }
-  .trim-out .to { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-  .trim-out .pair {
-    display: flex; flex-direction: column; width: 46px;
+  /* Drawn rather than a glyph, so the tick's weight matches the type. */
+  .ck .bx::after {
+    content: ""; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px;
+    border: solid var(--bg); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0.6);
+    opacity: 0; transition: opacity 120ms, transform 120ms;
+  }
+  .ck input:checked + .bx { background: var(--text); border-color: var(--text); }
+  .ck input:checked + .bx::after { opacity: 1; transform: rotate(45deg) scale(1); }
+  .ck input:focus-visible + .bx { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .ck .bx, .ck .bx::after { transition: none; } }
+  .jrow {
+    display: flex; align-items: center; gap: 12px; padding: 9px 0;
+    border-bottom: 1px solid var(--line-soft); cursor: pointer;
+  }
+  .jrow:last-child { border-bottom: 0; }
+  .jrow .jnm { flex: 1; }
+  .jrow.off .jnm, .jrow.off .pair, .jrow.off .jwhat { opacity: 0.4; }
+  .jwhat { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); }
+  .pair {
+    display: flex; width: 52px; height: 18px; flex: none;
     border-radius: 4px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line);
   }
-  /* The state's own colour on top, this light's version below, sharing an
-     edge -- the difference is only judgeable when they touch. */
-  .trim-out .pair i { height: 15px; display: block; }
-  .trim-out .pair i.base { border-bottom: 1px solid var(--bg); }
+  .pair i { flex: 1; display: block; }
+  .pair i:first-child { border-right: 1px solid var(--bg); }
   /* .hint is indented to line up under the state cards' label column;
      inside a per-light body there is no such column. */
   .pbody .hint { margin-left: 0; }
-  .trim-out .nm {
-    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
-    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint);
-  }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
   .chip {
     font-size: 0.78rem; padding: 4px 10px; border-radius: 5px; cursor: pointer;
@@ -764,34 +770,36 @@
 
   // The header's summary is the same four-stop track the hero draws, so a
   // stack of lights can be read down the column: which lights join in when.
-  function trackHtml(id, big) {
+  function trackHtml(id) {
     const p = perLightFor(id);
-    return '<span class="track' + (big ? " big" : "") + '">' + STATES.map(([k, label]) => {
-      const on = p.states[k] !== false;
-      const tag = big ? "button" : "span";
-      return "<" + tag + ' class="stop' + (on ? " on" : "") + '"' +
-        (big ? ' type="button" data-lstate="' + esc(id) + "|" + k + '"' +
-               ' aria-pressed="' + on + '" title="' + esc(label) + '"' : "") +
-        '><span class="pip"></span>' + (big ? '<span class="nm">' + esc(label) + "</span>" : "") +
-        "</" + tag + ">";
-    }).join("") + "</span>";
+    return '<span class="track">' + STATES.map(([k, label]) =>
+      '<span class="stop' + (p.states[k] !== false ? " on" : "") +
+      '" title="' + esc(label) + '"><span class="pip"></span></span>').join("") + "</span>";
   }
 
-  // What this light will actually be sent, per state it reacts to: the
-  // state's own colour above, this light's trimmed version below.
-  function trimOutHtml(id) {
+  // One row per state: a switch to join in or sit out, and the colour this
+  // light would actually show there. A separate "which states" picker and
+  // "result" strip said the same thing twice and neither said it plainly.
+  function stateListHtml(id) {
     const p = perLightFor(id);
-    const cells = STATES.filter(([k]) => k !== "off" && p.states[k] !== false)
-      .map(([k, label]) => {
+    return '<div class="jlist">' + STATES.map(([k, label]) => {
+      const on = p.states[k] !== false;
+      let what;
+      if (k === "off") {
+        what = '<span class="jwhat mono">' +
+          (lighting.restoreOnOff ? "puts it back" : "switches it off") + "</span>";
+      } else {
         const base = colourFor(k) || lighting.states[k].color || "#ffffff";
-        return '<span class="to"><span class="pair">' +
-          '<i class="base" style="background:' + esc(base) + '"></i>' +
-          '<i style="background:' + esc(trimHex(base, p)) + '"></i></span>' +
-          '<span class="nm">' + esc(label) + "</span></span>";
-      }).join("");
-    return cells
-      ? '<span class="label">Result</span><div class="trim-out">' + cells + "</div>"
-      : '<p class="hint">This light sits out every state, so nothing is sent to it.</p>';
+        const trimmed = trimHex(base, p);
+        what = '<span class="pair" title="' + esc(base) + " on this light: " + esc(trimmed) + '">' +
+          '<i style="background:' + esc(base) + '"></i>' +
+          '<i style="background:' + esc(trimmed) + '"></i></span>';
+      }
+      return '<label class="jrow' + (on ? "" : " off") + '">' +
+        '<span class="ck"><input type="checkbox" data-lstate="' + esc(id) + "|" + k + '"' +
+          (on ? " checked" : "") + '><span class="bx"></span></span>' +
+        '<span class="jnm">' + esc(label) + "</span>" + what + "</label>";
+    }).join("") + "</div>";
   }
 
   // Mirrors trimColor() in lib/lighting.js -- hue shifted, saturation
@@ -852,18 +860,18 @@
             '<span class="tr"></span></label>' +
           '<button class="prow-main" data-prow="' + esc(id) + '" aria-expanded="false">' +
             '<span class="pnm">' + esc(l.name) + "</span>" +
-            '<span data-ptrack="' + esc(id) + '">' + trackHtml(id, false) + "</span>" +
+            '<span data-ptrack="' + esc(id) + '">' + trackHtml(id) + "</span>" +
             '<span class="chev">▶</span>' +
           "</button>" +
         "</div>" +
         '<div class="pbody">' +
           '<span class="label">Joins in at</span>' +
-          '<div style="margin:8px 0 16px;">' + trackHtml(id, true) + "</div>" +
+          '<div data-pout="' + esc(id) + '">' + stateListHtml(id) + "</div>" +
           sliders +
-          '<div data-pout="' + esc(id) + '" style="margin-top:12px;">' + trimOutHtml(id) + "</div>" +
-          '<p class="hint">Hue and saturation trim this light towards the others. ' +
-          'The same colour lands warmer on a bulb than on a strip, so match it by eye ' +
-          'against the wall rather than by the numbers.' +
+          '<p class="hint">The swatches show each state’s colour on the left and ' +
+          'this light’s version of it on the right. ' +
+          'The same colour lands warmer on a bulb than on a strip, so trim it until ' +
+          'the light matches the others by eye.' +
           ((l.effects || []).length ? "" : " This light reports no effects, so it takes the colour only.") +
           "</p>" +
         "</div></div>";
@@ -871,27 +879,25 @@
   }
 
   el("perLight").addEventListener("change", (ev) => {
-    const t = ev.target.closest("[data-lenabled]");
-    if (!t || !lighting) return;
-    const id = t.dataset.lenabled;
-    perLightFor(id).enabled = t.checked;
-    t.closest(".plight").classList.toggle("muted", !t.checked);
+    if (!lighting) return;
+    const master = ev.target.closest("[data-lenabled]");
+    if (master) {
+      const id = master.dataset.lenabled;
+      perLightFor(id).enabled = master.checked;
+      master.closest(".plight").classList.toggle("muted", !master.checked);
+      queueSave();
+      return;
+    }
+    const st = ev.target.closest("[data-lstate]");
+    if (!st) return;
+    const [id, key] = st.dataset.lstate.split("|");
+    perLightFor(id).states[key] = st.checked;
+    st.closest(".jrow").classList.toggle("off", !st.checked);
+    repaintHeadTrack(id);
     queueSave();
   });
 
   el("perLight").addEventListener("click", (ev) => {
-    const chip = ev.target.closest("[data-lstate]");
-    if (chip) {
-      const [id, key] = chip.dataset.lstate.split("|");
-      const p = perLightFor(id);
-      const on = p.states[key] === false;
-      p.states[key] = on;
-      chip.classList.toggle("on", on);
-      chip.setAttribute("aria-pressed", String(on));
-      repaintPerLight(id);
-      queueSave();
-      return;
-    }
     const row = ev.target.closest("[data-prow]");
     if (!row) return;
     const card = row.closest(".plight");
@@ -899,12 +905,16 @@
     row.setAttribute("aria-expanded", open ? "true" : "false");
   });
 
+  function repaintHeadTrack(id) {
+    const head = document.querySelector('[data-ptrack="' + CSS.escape(id) + '"]');
+    if (head) head.innerHTML = trackHtml(id);
+  }
+
+  // Used when a trim slider moves: the swatches change, the switches don't.
   function repaintPerLight(id) {
-    const q = (sel) => document.querySelector(sel + '="' + CSS.escape(id) + '"]');
-    const head = q("[data-ptrack");
-    if (head) head.innerHTML = trackHtml(id, false);
-    const out = q("[data-pout");
-    if (out) out.innerHTML = trimOutHtml(id);
+    repaintHeadTrack(id);
+    const out = document.querySelector('[data-pout="' + CSS.escape(id) + '"]');
+    if (out) out.innerHTML = stateListHtml(id);
   }
 
   document.addEventListener("input", (ev) => {

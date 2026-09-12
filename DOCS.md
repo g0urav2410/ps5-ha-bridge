@@ -125,13 +125,12 @@ mixed set rarely wants the same treatment:
 | Setting | Notes |
 |---|---|
 | The row's switch | Whether the bridge touches this light at all. Off leaves it entirely alone — and switching it off mid-session hands that light straight back to what it was doing, while the others carry on. Switching it on mid-session brings the light in immediately. |
-| Joins in at | Which of the four states this light reacts to. A room lamp can sit out the home screen and come on only once a game starts, while a strip follows everything. |
+| Joins in at | Tick the states this light reacts to. Each row shows the state's own colour beside this light's version of it. A room lamp can sit out the home screen and come on only once a game starts, while a strip follows everything. |
 | Brightness | A percentage of whatever the state asks for, so one light can run dimmer than the rest without editing every state. |
 | Hue trim / Saturation | Nudges this light's colour. |
 
-The **Result** swatches show each state's own colour above this light's
-version of it. Match them by eye against the wall rather than by the
-numbers — that's the only reference that counts.
+Match the swatches by eye against the wall rather than by the numbers —
+that's the only reference that counts.
 
 Why a trim is needed at all: two lights given the same RGB value rarely look
 the same. A bulb and an LED strip have different primaries and different

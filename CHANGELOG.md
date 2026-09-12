@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.3.2
+
+- **Choosing which states a light joins is now a checklist.** It was a row of
+  dots, which summarised well but didn't read as something you pick from.
+  Each state is now a row with a tick box, its name, and the colour this light
+  would actually show there -- the state's own colour beside this light's
+  trimmed version of it. That also replaced the separate "result" strip, which
+  had been saying the same thing a second time.
+
 ## 3.3.1
 
 - **A light taken out of the bridge's control mid-session is handed back
