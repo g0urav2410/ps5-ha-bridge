@@ -144,11 +144,12 @@ snapshots them first, turns into **Stop and restore**, and reverts on its own
 after 45 seconds if you forget.
 
 **Put the lights back when the PS5 turns off** records each light exactly as
-it was when a session starts — brightness, colour, effect, and which ones
+it was the first time the add-on touches it — brightness, colour, effect, and which ones
 were switched off — and replays that at the end. The record is written to the
 add-on's own storage, so it survives the add-on or Home Assistant restarting
-mid-session. If there's no record to replay, the lights are switched off
-instead.
+mid-session, and it's taken even if the add-on started up with the console
+already on. If there's no record to replay at all, the lights are switched
+off instead.
 
 ### Things worth knowing
 

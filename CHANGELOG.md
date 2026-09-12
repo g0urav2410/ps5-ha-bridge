@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.2.1
+
+- **The lights are recorded the first time the bridge touches them**, rather
+  than on the `off` -> awake transition. Those are normally the same moment,
+  but they come apart when the add-on starts while the console is already on
+  -- installed mid-session, or restarted with no stored snapshot. The
+  transition has already gone by, while the lights are still exactly as you
+  left them, which is the state worth keeping. Previously that session ended
+  with the lights simply switched off.
+
 ## 3.2.0
 
 Mixed sets of lights, and lights that come back the way you left them.
