@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.3.1
+
+- **A light taken out of the bridge's control mid-session is handed back
+  straight away.** Switching a light's own toggle off while a game was
+  running, unticking every state, or removing it from the selection left it
+  stuck on the PS5's colours until the console turned off -- so the toggle
+  looked like it had done nothing. It now returns to what it was doing
+  before the bridge touched it, immediately, while the other lights carry on.
+  Turning a light's toggle back on mid-game already worked: it joins in at
+  once and is restored with the rest at the end.
+
 ## 3.3.0
 
 Three restore bugs, found by working through what actually happens with a

@@ -124,7 +124,7 @@ mixed set rarely wants the same treatment:
 
 | Setting | Notes |
 |---|---|
-| The row's switch | Whether the bridge touches this light at all. Off leaves it entirely alone. |
+| The row's switch | Whether the bridge touches this light at all. Off leaves it entirely alone — and switching it off mid-session hands that light straight back to what it was doing, while the others carry on. Switching it on mid-session brings the light in immediately. |
 | Joins in at | Which of the four states this light reacts to. A room lamp can sit out the home screen and come on only once a game starts, while a strip follows everything. |
 | Brightness | A percentage of whatever the state asks for, so one light can run dimmer than the rest without editing every state. |
 | Hue trim / Saturation | Nudges this light's colour. |
