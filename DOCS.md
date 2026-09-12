@@ -119,8 +119,9 @@ The four states are listed as rows. Opening one shows:
 
 ### Per-light settings
 
-A row appears for each chosen light once there are two of them, because a
-mixed set rarely wants the same treatment:
+Below the state cards, a row appears for each chosen light once there are two
+of them. These are exceptions to the states above — a mixed set of lights
+rarely wants the same treatment:
 
 | Setting | Notes |
 |---|---|

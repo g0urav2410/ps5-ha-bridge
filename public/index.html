@@ -226,7 +226,11 @@
     border-bottom: 1px solid var(--line-soft); cursor: pointer;
   }
   .jrow:last-child { border-bottom: 0; }
-  .jrow .jnm { flex: 1; }
+  .jrow .jnm {
+    flex: 1;
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+  }
   .jrow.off .jnm, .jrow.off .pair, .jrow.off .jwhat { opacity: 0.4; }
   .jwhat { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); }
   .pair {
@@ -489,8 +493,6 @@
         </div>
       </div>
 
-      <div class="plights" id="perLight"></div>
-
       <label class="inline-sw" style="margin-top:16px;">
         <span class="sw"><input type="checkbox" id="restoreOnOff"><span class="tr"></span></span>
         Put the lights back when the PS5 turns off
@@ -498,6 +500,7 @@
     </div>
 
     <div class="states" id="stateRows"></div>
+    <div class="sec-body"><div class="plights" id="perLight"></div></div>
   </section>
 
   <section class="sec" id="pairCard" style="display:none;">
@@ -845,7 +848,9 @@
       return;
     }
 
-    box.innerHTML = '<span class="label">Per-light</span>' + chosen.map((l) => {
+    box.innerHTML = '<span class="label">Per-light</span>' +
+      '<p class="note" style="margin:2px 0 10px;">Exceptions to the states above ' +
+      '&mdash; which lights join in where, and how each one is trimmed.</p>' + chosen.map((l) => {
       const id = l.entity_id;
       const p = perLightFor(id);
       const sliders = Object.entries(PL_SLIDERS)

@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.3.3
+
+- **The per-light section no longer reads as a second set of states.** It sat
+  directly above the state cards, so Off / Booting / Home / Playing appeared
+  twice in the same view at the same weight. It now sits below them, says what
+  it's for, and refers to the states in the panel's label type rather than
+  restating them as headings.
+
 ## 3.3.2
 
 - **Choosing which states a light joins is now a checklist.** It was a row of
